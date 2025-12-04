@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Base application theme.
+        
+        Customize your theme here.
+    -->
+    <style name="Theme.ChickenFarmApp" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/blue_primary</item>
+    </style>
+</resources>
