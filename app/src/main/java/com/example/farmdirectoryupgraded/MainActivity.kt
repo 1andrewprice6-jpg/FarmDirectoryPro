@@ -51,16 +51,18 @@ fun FarmDirectoryApp() {
 
     var currentScreen by remember { mutableStateOf("list") }
     var selectedFarmer by remember { mutableStateOf<Farmer?>(null) }
+    val appSettings = remember { com.example.farmdirectoryupgraded.data.AppSettings(context) }
 
     // Connect to WebSocket backend on app start
-    LaunchedEffect(Unit) {
-        viewModel.connectToBackend()
-        // Auto-join farm (you can customize farmId, workerId, workerName)
-        viewModel.joinFarm(
-            farmId = "farm-nc-1",
-            workerId = "worker-${System.currentTimeMillis()}",
-            workerName = "Mobile User"
-        )
+    LaunchedEffect(appSettings.backendUrl) {
+        if (appSettings.autoConnect) {
+            viewModel.connectToBackend()
+            viewModel.joinFarm(
+                farmId = appSettings.farmId,
+                workerId = "worker-${System.currentTimeMillis()}",
+                workerName = appSettings.workerName
+            )
+        }
     }
 
     when (currentScreen) {
@@ -69,16 +71,69 @@ fun FarmDirectoryApp() {
             onFarmerClick = { farmer ->
                 selectedFarmer = farmer
                 currentScreen = "details"
-            }
+            },
+            onAddClick = { currentScreen = "add" },
+            onSettingsClick = { currentScreen = "settings" },
+            onImportClick = { currentScreen = "import" },
+            onReconcileClick = { currentScreen = "reconcile" },
+            onAttendanceClick = { currentScreen = "attendance" },
+            onRouteClick = { currentScreen = "route" },
+            onLogsClick = { currentScreen = "logs" }
         )
         "details" -> selectedFarmer?.let { farmer ->
             FarmerDetailsScreen(
                 farmer = farmer,
                 onBack = { currentScreen = "list" },
                 onToggleFavorite = { viewModel.toggleFavorite(farmer) },
+                onEdit = {
+                    selectedFarmer = farmer
+                    currentScreen = "edit"
+                },
                 viewModel = viewModel
             )
         }
+        "edit" -> selectedFarmer?.let { farmer ->
+            EditFarmerScreen(
+                farmer = farmer,
+                onSave = { updatedFarmer ->
+                    viewModel.updateFarmer(updatedFarmer)
+                    currentScreen = "details"
+                },
+                onBack = { currentScreen = "details" }
+            )
+        }
+        "add" -> AddFarmerScreen(
+            onSave = { newFarmer ->
+                viewModel.addFarmer(newFarmer)
+                currentScreen = "list"
+            },
+            onBack = { currentScreen = "list" }
+        )
+        "settings" -> com.example.farmdirectoryupgraded.ui.SettingsScreen(
+            settings = appSettings,
+            viewModel = viewModel,
+            onBack = { currentScreen = "list" }
+        )
+        "import" -> com.example.farmdirectoryupgraded.ui.ImportDataScreen(
+            viewModel = viewModel,
+            onBack = { currentScreen = "list" }
+        )
+        "reconcile" -> ReconcileScreen(
+            viewModel = viewModel,
+            onBack = { currentScreen = "list" }
+        )
+        "attendance" -> AttendanceScreen(
+            viewModel = viewModel,
+            onBack = { currentScreen = "list" }
+        )
+        "route" -> RouteOptimizationScreen(
+            viewModel = viewModel,
+            onBack = { currentScreen = "list" }
+        )
+        "logs" -> LogsViewerScreen(
+            viewModel = viewModel,
+            onBack = { currentScreen = "list" }
+        )
     }
 }
 
@@ -86,7 +141,14 @@ fun FarmDirectoryApp() {
 @Composable
 fun FarmerListScreen(
     viewModel: FarmerViewModel,
-    onFarmerClick: (Farmer) -> Unit
+    onFarmerClick: (Farmer) -> Unit,
+    onAddClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onImportClick: () -> Unit = {},
+    onReconcileClick: () -> Unit = {},
+    onAttendanceClick: () -> Unit = {},
+    onRouteClick: () -> Unit = {},
+    onLogsClick: () -> Unit = {}
 ) {
     val farmers by viewModel.farmers.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -148,11 +210,59 @@ fun FarmerListScreen(
                         }
                     }
                 },
+                actions = {
+                    // Import button
+                    IconButton(onClick = onImportClick) {
+                        Icon(Icons.Default.Upload, contentDescription = "Import Data")
+                    }
+                    // Settings button
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                    // Add button
+                    IconButton(onClick = onAddClick) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Farmer")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
+        },
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = true,
+                    onClick = { /* Already on list */ },
+                    icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+                    label = { Text("Farmers") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onReconcileClick,
+                    icon = { Icon(Icons.Default.LocationOn, contentDescription = "Reconcile") },
+                    label = { Text("Reconcile") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onAttendanceClick,
+                    icon = { Icon(Icons.Default.CheckCircle, contentDescription = "Attendance") },
+                    label = { Text("Attendance") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onRouteClick,
+                    icon = { Icon(Icons.Default.Route, contentDescription = "Routes") },
+                    label = { Text("Routes") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onLogsClick,
+                    icon = { Icon(Icons.Default.Article, contentDescription = "Logs") },
+                    label = { Text("Logs") }
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->

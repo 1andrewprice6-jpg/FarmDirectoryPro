@@ -95,6 +95,12 @@ class FarmerViewModel(
         }
     }
 
+    fun updateFarmer(farmer: Farmer) {
+        viewModelScope.launch {
+            farmerDao.updateFarmer(farmer)
+        }
+    }
+
     fun deleteFarmer(farmer: Farmer) {
         viewModelScope.launch {
             farmerDao.deleteFarmer(farmer)
