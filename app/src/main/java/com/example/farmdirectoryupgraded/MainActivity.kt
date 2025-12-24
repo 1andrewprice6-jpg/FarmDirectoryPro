@@ -52,6 +52,17 @@ fun FarmDirectoryApp() {
     var currentScreen by remember { mutableStateOf("list") }
     var selectedFarmer by remember { mutableStateOf<Farmer?>(null) }
 
+    // Connect to WebSocket backend on app start
+    LaunchedEffect(Unit) {
+        viewModel.connectToBackend()
+        // Auto-join farm (you can customize farmId, workerId, workerName)
+        viewModel.joinFarm(
+            farmId = "farm-nc-1",
+            workerId = "worker-${System.currentTimeMillis()}",
+            workerName = "Mobile User"
+        )
+    }
+
     when (currentScreen) {
         "list" -> FarmerListScreen(
             viewModel = viewModel,
@@ -64,7 +75,8 @@ fun FarmDirectoryApp() {
             FarmerDetailsScreen(
                 farmer = farmer,
                 onBack = { currentScreen = "list" },
-                onToggleFavorite = { viewModel.toggleFavorite(farmer) }
+                onToggleFavorite = { viewModel.toggleFavorite(farmer) },
+                viewModel = viewModel
             )
         }
     }
@@ -81,21 +93,68 @@ fun FarmerListScreen(
     val selectedType by viewModel.selectedType.collectAsState()
     val types = listOf("All", "Pullet", "Breeder")
 
+    // Real-time WebSocket state
+    val isConnected by viewModel.isConnected.collectAsState()
+    val activeWorkers by viewModel.activeWorkers.collectAsState()
+    val recentLocationUpdate by viewModel.recentLocationUpdate.collectAsState()
+
+    // Snackbar for health alerts
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Collect health alerts
+    LaunchedEffect(Unit) {
+        viewModel.healthAlerts.collect { alert ->
+            snackbarHostState.showSnackbar(
+                message = "Health Alert: ${alert.healthNotes ?: "Check ${alert.entityId}"}",
+                duration = SnackbarDuration.Short
+            )
+        }
+    }
+
+    // Collect critical alerts
+    LaunchedEffect(Unit) {
+        viewModel.criticalAlerts.collect { alert ->
+            snackbarHostState.showSnackbar(
+                message = "🚨 CRITICAL: ${alert.healthNotes ?: alert.entityId}",
+                duration = SnackbarDuration.Long
+            )
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        "Farm Directory",
-                        fontWeight = FontWeight.Bold
-                    )
+                    Column {
+                        Text(
+                            "Farm Directory",
+                            fontWeight = FontWeight.Bold
+                        )
+                        // Connection status indicator
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Circle,
+                                contentDescription = if (isConnected) "Connected" else "Disconnected",
+                                modifier = Modifier.size(8.dp),
+                                tint = if (isConnected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (isConnected) "Live (${activeWorkers.size} workers)" else "Offline",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -136,6 +195,43 @@ fun FarmerListScreen(
                         onClick = { viewModel.updateSelectedType(type) },
                         label = { Text(type) }
                     )
+                }
+            }
+
+            // Real-time location update indicator
+            recentLocationUpdate?.let { update ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "📍 Location Updated",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Entity ${update.entityId} moved by ${update.updatedBy}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
                 }
             }
 
@@ -197,11 +293,30 @@ fun FarmerCard(
                         )
                     }
                 }
-                if (farmer.type.isNotEmpty()) {
-                    AssistChip(
-                        onClick = { },
-                        label = { Text(farmer.type) }
-                    )
+                Column(
+                    horizontalAlignment = Alignment.End
+                ) {
+                    if (farmer.type.isNotEmpty()) {
+                        AssistChip(
+                            onClick = { },
+                            label = { Text(farmer.type) }
+                        )
+                    }
+                    // Health status indicator
+                    if (farmer.healthStatus != "HEALTHY") {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        AssistChip(
+                            onClick = { },
+                            label = { Text(farmer.healthStatus) },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = when (farmer.healthStatus) {
+                                    "CRITICAL" -> MaterialTheme.colorScheme.errorContainer
+                                    "SICK" -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
+                                    else -> MaterialTheme.colorScheme.secondaryContainer
+                                }
+                            )
+                        )
+                    }
                 }
             }
 
@@ -243,6 +358,28 @@ fun FarmerCard(
                     )
                 }
             }
+
+            // GPS Location (if available)
+            if (farmer.latitude != null && farmer.longitude != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.LocationOn,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.tertiary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "GPS: ${String.format("%.4f", farmer.latitude)}, ${String.format("%.4f", farmer.longitude)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
         }
     }
 }
@@ -252,9 +389,11 @@ fun FarmerCard(
 fun FarmerDetailsScreen(
     farmer: Farmer,
     onBack: () -> Unit,
-    onToggleFavorite: () -> Unit
+    onToggleFavorite: () -> Unit,
+    viewModel: FarmerViewModel
 ) {
     val context = LocalContext.current
+    val isConnected by viewModel.isConnected.collectAsState()
 
     Scaffold(
         topBar = {

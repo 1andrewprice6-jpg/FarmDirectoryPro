@@ -15,5 +15,17 @@ data class Farmer(
     val cellPhone: String = "",
     val email: String = "",
     val type: String = "", // Pullet, Breeder, etc.
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+
+    // GPS Location (for real-time tracking)
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val lastLocationUpdate: Long? = null, // Timestamp in milliseconds
+
+    // Health Monitoring
+    val healthStatus: String = "HEALTHY", // HEALTHY, SICK, RECOVERING, CRITICAL, DECEASED
+    val healthNotes: String = "",
+
+    // Optimistic Locking (for conflict prevention)
+    val version: Int = 1
 )

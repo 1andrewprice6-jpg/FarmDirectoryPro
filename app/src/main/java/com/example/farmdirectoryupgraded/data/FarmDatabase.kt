@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 
 @Database(
     entities = [Farmer::class],
-    version = 1,
+    version = 2, // Updated for GPS location and health tracking fields
     exportSchema = false
 )
 abstract class FarmDatabase : RoomDatabase() {
