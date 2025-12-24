@@ -108,7 +108,7 @@ class FarmWebSocketService(private val backendUrl: String = "http://10.0.2.2:400
             put("workerName", workerName)
         }
 
-        socket?.emit(FarmEvent.JOIN_FARM, joinData) { args ->
+        socket?.emit(FarmEvent.JOIN_FARM, joinData, io.socket.client.Ack { args ->
             if (args.isNotEmpty()) {
                 val response = args[0] as? JSONObject
                 val success = response?.optBoolean("success", false) ?: false
@@ -117,7 +117,7 @@ class FarmWebSocketService(private val backendUrl: String = "http://10.0.2.2:400
             } else {
                 callback(false)
             }
-        }
+        })
     }
 
     /**
