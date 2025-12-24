@@ -4,12 +4,16 @@ import android.util.Log
 import com.google.gson.Gson
 import io.socket.client.IO
 import io.socket.client.Socket
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.net.URISyntaxException
 
@@ -22,6 +26,7 @@ class FarmWebSocketService(private val backendUrl: String = "http://10.0.2.2:400
     private val TAG = "FarmWebSocket"
     private var socket: Socket? = null
     private val gson = Gson()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // Connection state
     private val _isConnected = MutableStateFlow(false)
@@ -182,7 +187,7 @@ class FarmWebSocketService(private val backendUrl: String = "http://10.0.2.2:400
             }
 
             on(Socket.EVENT_CONNECT_ERROR) { args ->
-                Log.e(TAG, "Connection error: ${args.contentToString()}")
+                Log.e(TAG, "Connection error: ${if (args.isNotEmpty()) args[0].toString() else "Unknown error"}")
             }
 
             // Location updates
@@ -196,7 +201,7 @@ class FarmWebSocketService(private val backendUrl: String = "http://10.0.2.2:400
                         version = data.getInt("version"),
                         timestamp = java.util.Date(data.getLong("timestamp"))
                     )
-                    kotlinx.coroutines.GlobalScope.launch {
+                    scope.launch {
                         _locationUpdates.emit(broadcast)
                     }
                     Log.d(TAG, "📍 Location update: ${broadcast.entityId} by ${broadcast.updatedBy}")
@@ -217,7 +222,7 @@ class FarmWebSocketService(private val backendUrl: String = "http://10.0.2.2:400
                         updatedBy = data.optString("updatedBy"),
                         timestamp = java.util.Date(data.getLong("timestamp"))
                     )
-                    kotlinx.coroutines.GlobalScope.launch {
+                    scope.launch {
                         _healthAlerts.emit(alert)
                     }
                     Log.d(TAG, "🏥 Health alert: ${alert.entityId}")
@@ -237,7 +242,7 @@ class FarmWebSocketService(private val backendUrl: String = "http://10.0.2.2:400
                         timestamp = java.util.Date(data.getLong("timestamp")),
                         priority = data.optString("priority")
                     )
-                    kotlinx.coroutines.GlobalScope.launch {
+                    scope.launch {
                         _criticalAlerts.emit(alert)
                     }
                     Log.d(TAG, "🚨 CRITICAL ALERT: ${alert.entityId}")
@@ -277,7 +282,7 @@ class FarmWebSocketService(private val backendUrl: String = "http://10.0.2.2:400
                         workerName = data.getString("workerName"),
                         timestamp = java.util.Date(data.getLong("timestamp"))
                     )
-                    kotlinx.coroutines.GlobalScope.launch {
+                    scope.launch {
                         _workerJoined.emit(joined)
                     }
                     Log.d(TAG, "👨‍🌾 ${joined.workerName} joined")
@@ -294,7 +299,7 @@ class FarmWebSocketService(private val backendUrl: String = "http://10.0.2.2:400
                         workerName = data.getString("workerName"),
                         timestamp = java.util.Date(data.getLong("timestamp"))
                     )
-                    kotlinx.coroutines.GlobalScope.launch {
+                    scope.launch {
                         _workerLeft.emit(left)
                     }
                     Log.d(TAG, "👋 ${left.workerName} left")
