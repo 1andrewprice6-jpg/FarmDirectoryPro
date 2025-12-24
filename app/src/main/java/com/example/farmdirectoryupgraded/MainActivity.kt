@@ -19,8 +19,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.farmdirectoryupgraded.data.AppSettings
 import com.example.farmdirectoryupgraded.data.Farmer
 import com.example.farmdirectoryupgraded.data.FarmDatabase
+import com.example.farmdirectoryupgraded.ui.*
 import com.example.farmdirectoryupgraded.ui.theme.FarmDirectoryTheme
 import com.example.farmdirectoryupgraded.viewmodel.FarmerViewModel
 import com.example.farmdirectoryupgraded.viewmodel.FarmerViewModelFactory
@@ -51,7 +53,7 @@ fun FarmDirectoryApp() {
 
     var currentScreen by remember { mutableStateOf("list") }
     var selectedFarmer by remember { mutableStateOf<Farmer?>(null) }
-    val appSettings = remember { com.example.farmdirectoryupgraded.data.AppSettings(context) }
+    val appSettings = remember { AppSettings(context) }
 
     // Connect to WebSocket backend on app start
     LaunchedEffect(appSettings.backendUrl) {
@@ -109,12 +111,12 @@ fun FarmDirectoryApp() {
             },
             onBack = { currentScreen = "list" }
         )
-        "settings" -> com.example.farmdirectoryupgraded.ui.SettingsScreen(
+        "settings" -> SettingsScreen(
             settings = appSettings,
             viewModel = viewModel,
             onBack = { currentScreen = "list" }
         )
-        "import" -> com.example.farmdirectoryupgraded.ui.ImportDataScreen(
+        "import" -> ImportDataScreen(
             viewModel = viewModel,
             onBack = { currentScreen = "list" }
         )
@@ -500,6 +502,7 @@ fun FarmerDetailsScreen(
     farmer: Farmer,
     onBack: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onEdit: () -> Unit,
     viewModel: FarmerViewModel
 ) {
     val context = LocalContext.current
@@ -515,6 +518,9 @@ fun FarmerDetailsScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit")
+                    }
                     IconButton(onClick = onToggleFavorite) {
                         Icon(
                             if (farmer.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
