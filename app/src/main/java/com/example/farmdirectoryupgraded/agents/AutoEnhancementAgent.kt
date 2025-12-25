@@ -6,6 +6,7 @@ import com.example.farmdirectoryupgraded.data.Farmer
 import com.example.farmdirectoryupgraded.data.FarmDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -87,12 +88,12 @@ class AutoEnhancementAgent(private val context: Context) {
                 when (source.fileType) {
                     "JSON" -> {
                         val farmers = importFromJSON(source.filePath)
-                        database.farmerDao().insertAll(farmers)
+                        database.farmerDao().insertFarmers(farmers)
                         importedCount.add("${source.fileName}: ${farmers.size} records")
                     }
                     "CSV" -> {
                         val farmers = importFromCSV(source.filePath)
-                        database.farmerDao().insertAll(farmers)
+                        database.farmerDao().insertFarmers(farmers)
                         importedCount.add("${source.fileName}: ${farmers.size} records")
                     }
                 }
@@ -223,9 +224,9 @@ class AutoEnhancementAgent(private val context: Context) {
             
             val timestamp = System.currentTimeMillis()
             val backupFile = File(backupDir, "backup_$timestamp.json")
-            
+
             // Get all farmers
-            val farmers = database.farmerDao().getAllFarmersList()
+            val farmers = database.farmerDao().getAllFarmers().first()
             
             // Create backup JSON
             val backup = JSONObject().apply {
