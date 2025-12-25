@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "com.example.farmdirectoryupgraded.app-debug-49:/xml_data_extraction_rules.xml.flat",
+        "source": "com.example.farmdirectoryupgraded.app-main-51:/xml/data_extraction_rules.xml"
+    },
+    {
+        "merged": "com.example.farmdirectoryupgraded.app-debug-49:/xml_backup_rules.xml.flat",
+        "source": "com.example.farmdirectoryupgraded.app-main-51:/xml/backup_rules.xml"
+    }
+]

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="blue_dark">#FF303F9F</color>
+    <color name="blue_primary">#FF3F51B5</color>
+    <color name="white">#FFFFFFFF</color>
+    <string name="app_name">Farm Directory Pro</string>
+    <style name="Theme.ChickenFarmApp" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/blue_primary</item>
+    </style>
+</resources>
