@@ -48,7 +48,12 @@ fun FarmDirectoryApp() {
     val context = LocalContext.current
     val database = remember { FarmDatabase.getDatabase(context) }
     val viewModel: FarmerViewModel = viewModel(
-        factory = FarmerViewModelFactory(database.farmerDao())
+        factory = FarmerViewModelFactory(
+            context = context,
+            farmerDao = database.farmerDao(),
+            attendanceDao = database.attendanceDao(),
+            logDao = database.logDao()
+        )
     )
 
     var currentScreen by remember { mutableStateOf("list") }

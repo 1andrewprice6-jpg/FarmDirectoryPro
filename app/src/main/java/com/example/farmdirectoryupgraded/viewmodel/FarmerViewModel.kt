@@ -1,26 +1,40 @@
 package com.example.farmdirectoryupgraded.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.farmdirectoryupgraded.data.Farmer
-import com.example.farmdirectoryupgraded.data.FarmerDao
-import com.example.farmdirectoryupgraded.data.FarmWebSocketService
-import com.example.farmdirectoryupgraded.data.GPSCoordinates
-import com.example.farmdirectoryupgraded.data.HealthAlert
-import com.example.farmdirectoryupgraded.data.HealthStatus
-import com.example.farmdirectoryupgraded.data.LocationBroadcast
-import com.example.farmdirectoryupgraded.data.WorkerInfo
+import com.example.farmdirectoryupgraded.data.*
+import com.example.farmdirectoryupgraded.ui.ImportMethod
+import com.example.farmdirectoryupgraded.ui.ImportRecord
+import com.example.farmdirectoryupgraded.ui.AttendanceMethod
+import com.example.farmdirectoryupgraded.ui.ReconcileResult
+import com.example.farmdirectoryupgraded.ui.AlternativeFarm
+import com.example.farmdirectoryupgraded.ui.OptimizedRoute
+import com.example.farmdirectoryupgraded.ui.RouteStop
+import com.google.gson.Gson
+import com.google.gson.JsonSyntaxException
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.math.*
 
 class FarmerViewModel(
+    private val context: Context,
     private val farmerDao: FarmerDao,
+    private val attendanceDao: AttendanceDao,
+    private val logDao: LogDao,
     private val webSocketService: FarmWebSocketService = FarmWebSocketService.getInstance()
 ) : ViewModel() {
 
     private val TAG = "FarmerViewModel"
+    private val gson = Gson()
+    private val dateFormatter = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -45,6 +59,52 @@ class FarmerViewModel(
 
     // Worker presence
     val activeWorkers: StateFlow<List<WorkerInfo>> = webSocketService.workerPresence
+
+    // Attendance records
+    val attendanceRecords: StateFlow<List<com.example.farmdirectoryupgraded.ui.AttendanceRecord>> =
+        attendanceDao.getAllAttendanceRecords()
+            .map { records ->
+                records.map { record ->
+                    com.example.farmdirectoryupgraded.ui.AttendanceRecord(
+                        id = record.id,
+                        farmName = record.farmName,
+                        method = record.method,
+                        timestamp = dateFormatter.format(Date(record.checkInTime)),
+                        notes = record.notes,
+                        checkOut = record.checkOutTime?.let { dateFormatter.format(Date(it)) }
+                    )
+                }
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+
+    // Logs
+    val logs: StateFlow<List<com.example.farmdirectoryupgraded.ui.LogEntry>> =
+        logDao.getAllLogs()
+            .map { entries ->
+                entries.map { entry ->
+                    com.example.farmdirectoryupgraded.ui.LogEntry(
+                        id = entry.id,
+                        category = entry.category,
+                        level = com.example.farmdirectoryupgraded.ui.LogLevel.valueOf(entry.level),
+                        message = entry.message,
+                        details = entry.details,
+                        timestamp = dateFormatter.format(Date(entry.timestamp))
+                    )
+                }
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+
+    // Recent imports
+    private val _recentImports = MutableStateFlow<List<ImportRecord>>(emptyList())
+    val recentImports: StateFlow<List<ImportRecord>> = _recentImports.asStateFlow()
 
     init {
         // Collect WebSocket events
@@ -92,18 +152,21 @@ class FarmerViewModel(
     fun addFarmer(farmer: Farmer) {
         viewModelScope.launch {
             farmerDao.insertFarmer(farmer)
+            addLog("Farmer", "SUCCESS", "Added farmer: ${farmer.name}", "Farm: ${farmer.farmName}")
         }
     }
 
     fun updateFarmer(farmer: Farmer) {
         viewModelScope.launch {
             farmerDao.updateFarmer(farmer)
+            addLog("Farmer", "SUCCESS", "Updated farmer: ${farmer.name}", "Farm: ${farmer.farmName}")
         }
     }
 
     fun deleteFarmer(farmer: Farmer) {
         viewModelScope.launch {
             farmerDao.deleteFarmer(farmer)
+            addLog("Farmer", "SUCCESS", "Deleted farmer: ${farmer.name}", "Farm: ${farmer.farmName}")
         }
     }
 
@@ -252,17 +315,353 @@ class FarmerViewModel(
         }
     }
 
+    // ========================================================================
+    // CSV/JSON IMPORT
+    // ========================================================================
+
+    fun importFromFile(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val reader = BufferedReader(InputStreamReader(inputStream))
+                val content = reader.readText()
+                reader.close()
+
+                val fileName = uri.lastPathSegment ?: ""
+                val importedCount = when {
+                    fileName.endsWith(".json", ignoreCase = true) -> importFromJson(content)
+                    fileName.endsWith(".csv", ignoreCase = true) -> importFromCsv(content)
+                    else -> {
+                        addLog("Import", "ERROR", "Unsupported file format", "File: $fileName")
+                        0
+                    }
+                }
+
+                if (importedCount > 0) {
+                    addImportRecord(ImportMethod.FILE.name, importedCount, true)
+                    addLog("Import", "SUCCESS", "Imported $importedCount farmers from file", "File: $fileName")
+                } else {
+                    addImportRecord(ImportMethod.FILE.name, 0, false)
+                }
+            } catch (e: Exception) {
+                addLog("Import", "ERROR", "Import failed: ${e.message}", e.stackTraceToString())
+                addImportRecord(ImportMethod.FILE.name, 0, false)
+            }
+        }
+    }
+
+    private suspend fun importFromJson(content: String): Int {
+        return try {
+            val farmerList = gson.fromJson(content, Array<Farmer>::class.java).toList()
+            farmerDao.insertFarmers(farmerList)
+            farmerList.size
+        } catch (e: JsonSyntaxException) {
+            addLog("Import", "ERROR", "Invalid JSON format", e.message ?: "")
+            0
+        }
+    }
+
+    private suspend fun importFromCsv(content: String): Int {
+        val lines = content.split("\n").filter { it.isNotBlank() }
+        if (lines.isEmpty()) return 0
+
+        val farmers = mutableListOf<Farmer>()
+        val header = lines.first().split(",").map { it.trim() }
+
+        for (i in 1 until lines.size) {
+            val values = lines[i].split(",").map { it.trim() }
+            if (values.size < 2) continue
+
+            val farmerMap = header.zip(values).toMap()
+
+            val farmer = Farmer(
+                name = farmerMap["name"] ?: farmerMap["Name"] ?: "",
+                spouse = farmerMap["spouse"] ?: farmerMap["Spouse"] ?: "",
+                farmName = farmerMap["farmName"] ?: farmerMap["FarmName"] ?: farmerMap["farm_name"] ?: "",
+                address = farmerMap["address"] ?: farmerMap["Address"] ?: "",
+                phone = farmerMap["phone"] ?: farmerMap["Phone"] ?: "",
+                cellPhone = farmerMap["cellPhone"] ?: farmerMap["CellPhone"] ?: farmerMap["cell_phone"] ?: "",
+                email = farmerMap["email"] ?: farmerMap["Email"] ?: "",
+                type = farmerMap["type"] ?: farmerMap["Type"] ?: "",
+                latitude = farmerMap["latitude"]?.toDoubleOrNull() ?: farmerMap["Latitude"]?.toDoubleOrNull(),
+                longitude = farmerMap["longitude"]?.toDoubleOrNull() ?: farmerMap["Longitude"]?.toDoubleOrNull()
+            )
+
+            if (farmer.name.isNotBlank() && farmer.address.isNotBlank()) {
+                farmers.add(farmer)
+            }
+        }
+
+        farmerDao.insertFarmers(farmers)
+        return farmers.size
+    }
+
+    private fun addImportRecord(method: String, count: Int, success: Boolean) {
+        val record = ImportRecord(
+            method = method,
+            recordsImported = count,
+            timestamp = dateFormatter.format(Date()),
+            success = success
+        )
+        _recentImports.value = listOf(record) + _recentImports.value.take(9)
+    }
+
+    // Placeholder methods for UI compatibility
+    fun importFromCamera() {
+        addLog("Import", "INFO", "Camera import not yet implemented", "")
+    }
+
+    fun startVoiceInput() {
+        addLog("Import", "INFO", "Voice input not yet implemented", "")
+    }
+
+    fun showEmailImportDialog() {
+        addLog("Import", "INFO", "Email import not yet implemented", "")
+    }
+
+    fun showCloudImportDialog() {
+        addLog("Import", "INFO", "Cloud import not yet implemented", "")
+    }
+
+    fun startNFCReader() {
+        addLog("Import", "INFO", "NFC reader not yet implemented", "")
+    }
+
+    fun showAPIImportDialog() {
+        addLog("Import", "INFO", "API import not yet implemented", "")
+    }
+
+    fun prepareCameraImport() {
+        addLog("Import", "INFO", "Camera import not yet implemented", "")
+    }
+
+    // ========================================================================
+    // ATTENDANCE TRACKING
+    // ========================================================================
+
+    fun recordAttendance(method: AttendanceMethod, farmName: String, notes: String) {
+        viewModelScope.launch {
+            val record = AttendanceRecord(
+                farmName = farmName,
+                method = method.name,
+                checkInTime = System.currentTimeMillis(),
+                notes = notes,
+                workerId = "worker-${System.currentTimeMillis()}"
+            )
+            attendanceDao.insertAttendance(record)
+            addLog("Attendance", "SUCCESS", "Check-in recorded", "Farm: $farmName, Method: ${method.displayName}")
+        }
+    }
+
+    // ========================================================================
+    // GPS RECONCILIATION
+    // ========================================================================
+
+    fun getCurrentLocation(callback: (Double, Double) -> Unit) {
+        // Placeholder - in real app, use FusedLocationProviderClient
+        // For now, return a sample location
+        addLog("Reconcile", "INFO", "GPS location requested", "")
+        callback(35.7796, -81.3361) // Sample: Hiddenite, NC area
+    }
+
+    fun reconcileFarm(latitude: Double, longitude: Double, callback: (ReconcileResult) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val farmersWithLocation = farmers.value.filter {
+                    it.latitude != null && it.longitude != null
+                }
+
+                if (farmersWithLocation.isEmpty()) {
+                    addLog("Reconcile", "WARNING", "No farms with GPS coordinates", "")
+                    return@launch
+                }
+
+                val distances = farmersWithLocation.map { farmer ->
+                    val distance = calculateHaversineDistance(
+                        latitude, longitude,
+                        farmer.latitude!!, farmer.longitude!!
+                    )
+                    Triple(farmer, distance, calculateConfidence(distance))
+                }.sortedBy { it.second }
+
+                val nearest = distances.first()
+                val alternatives = distances.drop(1).take(3).map {
+                    AlternativeFarm(
+                        farmName = it.first.farmName.ifBlank { it.first.name },
+                        distance = it.second
+                    )
+                }
+
+                val result = ReconcileResult(
+                    farmName = nearest.first.farmName.ifBlank { nearest.first.name },
+                    distance = nearest.second,
+                    confidence = nearest.third,
+                    alternatives = alternatives
+                )
+
+                addLog("Reconcile", "SUCCESS", "Reconciled to: ${result.farmName}",
+                    "Distance: ${String.format("%.2f", result.distance)} km, Confidence: ${String.format("%.1f", result.confidence)}%")
+
+                callback(result)
+            } catch (e: Exception) {
+                addLog("Reconcile", "ERROR", "Reconciliation failed", e.message ?: "")
+            }
+        }
+    }
+
+    private fun calculateHaversineDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val R = 6371.0 // Earth radius in kilometers
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = sin(dLat / 2) * sin(dLat / 2) +
+                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+                sin(dLon / 2) * sin(dLon / 2)
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        return R * c
+    }
+
+    private fun calculateConfidence(distance: Double): Double {
+        return when {
+            distance < 0.5 -> 95.0
+            distance < 1.0 -> 85.0
+            distance < 2.0 -> 75.0
+            distance < 5.0 -> 60.0
+            else -> 40.0
+        }
+    }
+
+    // ========================================================================
+    // ROUTE OPTIMIZATION
+    // ========================================================================
+
+    fun optimizeRoute(selectedFarmers: List<Farmer>, callback: (OptimizedRoute) -> Unit) {
+        viewModelScope.launch {
+            try {
+                if (selectedFarmers.isEmpty()) {
+                    addLog("Route", "WARNING", "No farms selected for optimization", "")
+                    return@launch
+                }
+
+                val farmersWithLocation = selectedFarmers.filter {
+                    it.latitude != null && it.longitude != null
+                }
+
+                if (farmersWithLocation.isEmpty()) {
+                    addLog("Route", "ERROR", "Selected farms have no GPS coordinates", "")
+                    return@launch
+                }
+
+                // Nearest Neighbor Algorithm
+                val route = mutableListOf<Farmer>()
+                val remaining = farmersWithLocation.toMutableList()
+
+                // Start with the first farm
+                var current = remaining.removeAt(0)
+                route.add(current)
+
+                // Find nearest neighbor iteratively
+                while (remaining.isNotEmpty()) {
+                    val nearest = remaining.minByOrNull { next ->
+                        calculateHaversineDistance(
+                            current.latitude!!, current.longitude!!,
+                            next.latitude!!, next.longitude!!
+                        )
+                    }!!
+
+                    remaining.remove(nearest)
+                    route.add(nearest)
+                    current = nearest
+                }
+
+                // Calculate route details
+                var totalDistance = 0.0
+                val stops = mutableListOf<RouteStop>()
+
+                route.forEachIndexed { index, farmer ->
+                    val distanceFromPrev = if (index == 0) {
+                        0.0
+                    } else {
+                        calculateHaversineDistance(
+                            route[index - 1].latitude!!,
+                            route[index - 1].longitude!!,
+                            farmer.latitude!!,
+                            farmer.longitude!!
+                        )
+                    }
+
+                    totalDistance += distanceFromPrev
+
+                    stops.add(
+                        RouteStop(
+                            farmName = farmer.farmName.ifBlank { farmer.name },
+                            distanceFromPrevious = if (index == 0) "Start" else String.format("%.1f", distanceFromPrev),
+                            timeFromPrevious = if (index == 0) "-" else "${(distanceFromPrev * 1.5).toInt()} min"
+                        )
+                    )
+                }
+
+                val estimatedTime = "${(totalDistance * 1.5).toInt()} minutes"
+                val fuelCost = totalDistance * 0.15 // Assume $0.15 per km
+
+                val optimizedRoute = OptimizedRoute(
+                    stops = stops,
+                    totalDistance = totalDistance,
+                    estimatedTime = estimatedTime,
+                    fuelCost = fuelCost
+                )
+
+                addLog("Route", "SUCCESS", "Optimized route for ${selectedFarmers.size} farms",
+                    "Total distance: ${String.format("%.1f", totalDistance)} km")
+
+                callback(optimizedRoute)
+            } catch (e: Exception) {
+                addLog("Route", "ERROR", "Route optimization failed", e.message ?: "")
+            }
+        }
+    }
+
+    // ========================================================================
+    // ACTIVITY LOGGING
+    // ========================================================================
+
+    private suspend fun addLog(category: String, level: String, message: String, details: String) {
+        val logEntry = LogEntry(
+            category = category,
+            level = level,
+            message = message,
+            details = details,
+            timestamp = System.currentTimeMillis()
+        )
+        logDao.insertLog(logEntry)
+    }
+
+    fun exportLogs() {
+        addLog("System", "INFO", "Export logs requested", "")
+    }
+
+    fun clearLogs() {
+        viewModelScope.launch {
+            logDao.deleteAllLogs()
+            addLog("System", "INFO", "Logs cleared", "")
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         webSocketService.disconnect()
     }
 }
 
-class FarmerViewModelFactory(private val farmerDao: FarmerDao) : ViewModelProvider.Factory {
+class FarmerViewModelFactory(
+    private val context: Context,
+    private val farmerDao: FarmerDao,
+    private val attendanceDao: AttendanceDao,
+    private val logDao: LogDao
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(FarmerViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return FarmerViewModel(farmerDao) as T
+            return FarmerViewModel(context, farmerDao, attendanceDao, logDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
