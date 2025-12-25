@@ -408,31 +408,45 @@ class FarmerViewModel(
 
     // Placeholder methods for UI compatibility
     fun importFromCamera() {
-        addLog("Import", "INFO", "Camera import not yet implemented", "")
+        viewModelScope.launch {
+            addLog("Import", "INFO", "Camera import not yet implemented", "")
+        }
     }
 
     fun startVoiceInput() {
-        addLog("Import", "INFO", "Voice input not yet implemented", "")
+        viewModelScope.launch {
+            addLog("Import", "INFO", "Voice input not yet implemented", "")
+        }
     }
 
     fun showEmailImportDialog() {
-        addLog("Import", "INFO", "Email import not yet implemented", "")
+        viewModelScope.launch {
+            addLog("Import", "INFO", "Email import not yet implemented", "")
+        }
     }
 
     fun showCloudImportDialog() {
-        addLog("Import", "INFO", "Cloud import not yet implemented", "")
+        viewModelScope.launch {
+            addLog("Import", "INFO", "Cloud import not yet implemented", "")
+        }
     }
 
     fun startNFCReader() {
-        addLog("Import", "INFO", "NFC reader not yet implemented", "")
+        viewModelScope.launch {
+            addLog("Import", "INFO", "NFC reader not yet implemented", "")
+        }
     }
 
     fun showAPIImportDialog() {
-        addLog("Import", "INFO", "API import not yet implemented", "")
+        viewModelScope.launch {
+            addLog("Import", "INFO", "API import not yet implemented", "")
+        }
     }
 
     fun prepareCameraImport() {
-        addLog("Import", "INFO", "Camera import not yet implemented", "")
+        viewModelScope.launch {
+            addLog("Import", "INFO", "Camera import not yet implemented", "")
+        }
     }
 
     // ========================================================================
@@ -460,7 +474,9 @@ class FarmerViewModel(
     fun getCurrentLocation(callback: (Double, Double) -> Unit) {
         // Placeholder - in real app, use FusedLocationProviderClient
         // For now, return a sample location
-        addLog("Reconcile", "INFO", "GPS location requested", "")
+        viewModelScope.launch {
+            addLog("Reconcile", "INFO", "GPS location requested", "")
+        }
         callback(35.7796, -81.3361) // Sample: Hiddenite, NC area
     }
 
@@ -636,7 +652,9 @@ class FarmerViewModel(
     }
 
     fun exportLogs() {
-        addLog("System", "INFO", "Export logs requested", "")
+        viewModelScope.launch {
+            addLog("System", "INFO", "Export logs requested", "")
+        }
     }
 
     fun clearLogs() {

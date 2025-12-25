@@ -259,6 +259,7 @@ fun ImportDataScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportMethodCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
