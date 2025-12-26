@@ -1,20 +1,31 @@
-name: Android Release
+name: Production Release
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
+      release_notes:
+        description: 'Release notes'
+        required: false
+        type: string
 
 jobs:
-  release:
+  validate:
+    name: Pre-release Validation
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up JDK 17
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
@@ -23,22 +34,243 @@ jobs:
     - name: Grant execute permission
       run: chmod +x gradlew
 
-    - name: Build release APK
-      run: ./gradlew assembleRelease
+    - name: Run all tests
+      run: ./gradlew testProdReleaseUnitTest --stacktrace
+
+    - name: Run lint
+      run: ./gradlew lintProdRelease --stacktrace
+
+  build-release:
+    name: Build Release APK
+    runs-on: ubuntu-latest
+    needs: validate
+
+    outputs:
+      version_name: ${{ steps.version.outputs.name }}
+      version_code: ${{ steps.version.outputs.code }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Extract version information
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION=${GITHUB_REF#refs/tags/v}
+        fi
+        echo "name=$VERSION" >> $GITHUB_OUTPUT
+
+        # Calculate version code from semantic version
+        IFS='.' read -ra VER <<< "$VERSION"
+        VERSION_CODE=$((${VER[0]} * 10000 + ${VER[1]} * 100 + ${VER[2]}))
+        echo "code=$VERSION_CODE" >> $GITHUB_OUTPUT
+
+        echo "Version: $VERSION (Code: $VERSION_CODE)"
+
+    - name: Update version in build.gradle.kts
+      run: |
+        sed -i "s/versionCode = .*/versionCode = ${{ steps.version.outputs.code }}/" app/build.gradle.kts
+        sed -i "s/versionName = .*/versionName = \"${{ steps.version.outputs.name }}\"/" app/build.gradle.kts
+
+    - name: Grant execute permission
+      run: chmod +x gradlew
+
+    - name: Build Release APK
+      run: ./gradlew assembleProdRelease --stacktrace
+
+    - name: Build Release AAB
+      run: ./gradlew bundleProdRelease --stacktrace
 
     - name: Sign APK
+      id: sign_apk
       uses: r0adkll/sign-android-release@v1
+      if: env.SIGNING_KEY != ''
+      env:
+        SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
       with:
-        releaseDirectory: app/build/outputs/apk/release
+        releaseDirectory: app/build/outputs/apk/prod/release
         signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-        alias: ${{ secrets.ALIAS }}
+        alias: ${{ secrets.SIGNING_ALIAS }}
         keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
         keyPassword: ${{ secrets.KEY_PASSWORD }}
+
+    - name: Sign AAB
+      id: sign_aab
+      uses: r0adkll/sign-android-release@v1
+      if: env.SIGNING_KEY != ''
+      env:
+        SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+      with:
+        releaseDirectory: app/build/outputs/bundle/prodRelease
+        signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+        alias: ${{ secrets.SIGNING_ALIAS }}
+        keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+        keyPassword: ${{ secrets.KEY_PASSWORD }}
+
+    - name: Rename APK
+      run: |
+        cd app/build/outputs/apk/prod/release
+        for file in *.apk; do
+          mv "$file" "FarmDirectory-v${{ steps.version.outputs.name }}.apk"
+        done
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-apk
+        path: app/build/outputs/apk/prod/release/*.apk
+        retention-days: 90
+
+    - name: Upload AAB Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-aab
+        path: app/build/outputs/bundle/prodRelease/*.aab
+        retention-days: 90
+
+    - name: Generate checksum
+      run: |
+        cd app/build/outputs/apk/prod/release
+        sha256sum *.apk > checksums.txt
+        cat checksums.txt
+
+    - name: Upload checksums
+      uses: actions/upload-artifact@v4
+      with:
+        name: checksums
+        path: app/build/outputs/apk/prod/release/checksums.txt
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-release
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Download APK
+      uses: actions/download-artifact@v4
+      with:
+        name: release-apk
+        path: release-artifacts
+
+    - name: Download AAB
+      uses: actions/download-artifact@v4
+      with:
+        name: release-aab
+        path: release-artifacts
+
+    - name: Download checksums
+      uses: actions/download-artifact@v4
+      with:
+        name: checksums
+        path: release-artifacts
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.release_notes }}" ]; then
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "${{ github.event.inputs.release_notes }}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        else
+          # Generate changelog from commits
+          PREVIOUS_TAG=$(git describe --abbrev=0 --tags $(git rev-list --tags --skip=1 --max-count=1) 2>/dev/null || echo "")
+          if [ -z "$PREVIOUS_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --reverse)
+          else
+            CHANGELOG=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%h)" --reverse)
+          fi
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        fi
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: app/build/outputs/apk/release/*.apk
+        tag_name: v${{ needs.build-release.outputs.version_name }}
+        name: Farm Directory v${{ needs.build-release.outputs.version_name }}
+        body: |
+          ## Farm Directory v${{ needs.build-release.outputs.version_name }}
+
+          ### What's Changed
+          ${{ steps.changelog.outputs.CHANGELOG }}
+
+          ### Installation
+          Download the APK file below and install on your Android device.
+
+          ### Checksums
+          See checksums.txt for SHA256 verification.
+
+          ---
+          **Version Code:** ${{ needs.build-release.outputs.version_code }}
+        files: |
+          release-artifacts/*.apk
+          release-artifacts/*.aab
+          release-artifacts/checksums.txt
+        draft: false
+        prerelease: false
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-play-store:
+    name: Deploy to Google Play Store
+    runs-on: ubuntu-latest
+    needs: [build-release, create-release]
+    if: secrets.PLAY_STORE_JSON_KEY != ''
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download AAB
+      uses: actions/download-artifact@v4
+      with:
+        name: release-aab
+        path: release-artifacts
+
+    - name: Deploy to Play Store
+      uses: r0adkll/upload-google-play@v1
+      with:
+        serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_JSON_KEY }}
+        packageName: com.example.farmdirectoryupgraded
+        releaseFiles: release-artifacts/*.aab
+        track: production
+        status: completed
+        whatsNewDirectory: fastlane/metadata/android
+
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [create-release]
+    if: always()
+
+    steps:
+    - name: Release Summary
+      run: |
+        echo "## Release Pipeline Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Version Information" >> $GITHUB_STEP_SUMMARY
+        echo "- Version: ${{ needs.build-release.outputs.version_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Version Code: ${{ needs.build-release.outputs.version_code }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Status" >> $GITHUB_STEP_SUMMARY
+        echo "- Build: ${{ needs.build-release.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Release: ${{ needs.create-release.result }}" >> $GITHUB_STEP_SUMMARY

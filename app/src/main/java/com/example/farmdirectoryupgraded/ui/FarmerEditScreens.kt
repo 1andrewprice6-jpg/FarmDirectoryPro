@@ -9,8 +9,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardOptions
 import com.example.farmdirectoryupgraded.data.Farmer
+import com.example.farmdirectoryupgraded.utils.ValidationUtils
+import com.example.farmdirectoryupgraded.utils.SanitizationUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,6 +33,79 @@ fun AddFarmerScreen(
     var latitude by remember { mutableStateOf("") }
     var longitude by remember { mutableStateOf("") }
 
+    // Validation error states
+    var nameError by remember { mutableStateOf<String?>(null) }
+    var farmNameError by remember { mutableStateOf<String?>(null) }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var phoneError by remember { mutableStateOf<String?>(null) }
+    var cellPhoneError by remember { mutableStateOf<String?>(null) }
+    var latitudeError by remember { mutableStateOf<String?>(null) }
+    var longitudeError by remember { mutableStateOf<String?>(null) }
+
+    // Validate all fields
+    fun validateForm(): Boolean {
+        var isValid = true
+
+        // Validate name
+        val nameValidation = ValidationUtils.validateRequired(name, "Name")
+        nameError = nameValidation.errorMessage
+        if (!nameValidation.isValid) isValid = false
+
+        // Validate farm name
+        val farmNameValidation = ValidationUtils.validateRequired(farmName, "Farm Name")
+        farmNameError = farmNameValidation.errorMessage
+        if (!farmNameValidation.isValid) isValid = false
+
+        // Validate email
+        val emailValidation = ValidationUtils.validateEmail(email)
+        emailError = emailValidation.errorMessage
+        if (!emailValidation.isValid) isValid = false
+
+        // Validate phone
+        val phoneValidation = ValidationUtils.validatePhone(phone)
+        phoneError = phoneValidation.errorMessage
+        if (!phoneValidation.isValid) isValid = false
+
+        // Validate cell phone
+        val cellPhoneValidation = ValidationUtils.validatePhone(cellPhone)
+        cellPhoneError = cellPhoneValidation.errorMessage
+        if (!cellPhoneValidation.isValid) isValid = false
+
+        // Validate latitude
+        val latValidation = ValidationUtils.validateLatitude(latitude)
+        latitudeError = latValidation.errorMessage
+        if (!latValidation.isValid) isValid = false
+
+        // Validate longitude
+        val lonValidation = ValidationUtils.validateLongitude(longitude)
+        longitudeError = lonValidation.errorMessage
+        if (!lonValidation.isValid) isValid = false
+
+        return isValid
+    }
+
+    fun saveFarmer() {
+        if (validateForm()) {
+            val newFarmer = Farmer(
+                id = 0,
+                name = SanitizationUtils.sanitizeText(name),
+                farmName = SanitizationUtils.sanitizeText(farmName),
+                address = SanitizationUtils.sanitizeAddress(address),
+                phone = SanitizationUtils.sanitizePhone(phone),
+                cellPhone = SanitizationUtils.sanitizePhone(cellPhone),
+                email = SanitizationUtils.sanitizeEmail(email),
+                type = SanitizationUtils.sanitizeText(type),
+                spouse = SanitizationUtils.sanitizeText(spouse),
+                latitude = latitude.toDoubleOrNull(),
+                longitude = longitude.toDoubleOrNull(),
+                isFavorite = false,
+                healthStatus = "HEALTHY",
+                healthNotes = ""
+            )
+            onSave(newFarmer)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -40,25 +117,7 @@ fun AddFarmerScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = {
-                            val newFarmer = Farmer(
-                                id = 0,
-                                name = name,
-                                farmName = farmName,
-                                address = address,
-                                phone = phone,
-                                cellPhone = cellPhone,
-                                email = email,
-                                type = type,
-                                spouse = spouse,
-                                latitude = latitude.toDoubleOrNull(),
-                                longitude = longitude.toDoubleOrNull(),
-                                isFavorite = false,
-                                healthStatus = "HEALTHY",
-                                healthNotes = ""
-                            )
-                            onSave(newFarmer)
-                        },
+                        onClick = { saveFarmer() },
                         enabled = name.isNotBlank() && farmName.isNotBlank()
                     ) {
                         Icon(Icons.Default.Save, contentDescription = "Save")
@@ -87,18 +146,28 @@ fun AddFarmerScreen(
 
             OutlinedTextField(
                 value = name,
-                onValueChange = { name = it },
+                onValueChange = {
+                    name = it
+                    nameError = null // Clear error on change
+                },
                 label = { Text("Name *") },
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
+                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                isError = nameError != null,
+                supportingText = nameError?.let { { Text(it) } }
             )
 
             OutlinedTextField(
                 value = farmName,
-                onValueChange = { farmName = it },
+                onValueChange = {
+                    farmName = it
+                    farmNameError = null
+                },
                 label = { Text("Farm Name *") },
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Default.Home, contentDescription = null) }
+                leadingIcon = { Icon(Icons.Default.Home, contentDescription = null) },
+                isError = farmNameError != null,
+                supportingText = farmNameError?.let { { Text(it) } }
             )
 
             OutlinedTextField(
@@ -116,27 +185,45 @@ fun AddFarmerScreen(
             ) {
                 OutlinedTextField(
                     value = phone,
-                    onValueChange = { phone = it },
+                    onValueChange = {
+                        phone = it
+                        phoneError = null
+                    },
                     label = { Text("Phone") },
                     modifier = Modifier.weight(1f),
-                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) }
+                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    isError = phoneError != null,
+                    supportingText = phoneError?.let { { Text(it) } }
                 )
 
                 OutlinedTextField(
                     value = cellPhone,
-                    onValueChange = { cellPhone = it },
+                    onValueChange = {
+                        cellPhone = it
+                        cellPhoneError = null
+                    },
                     label = { Text("Cell") },
                     modifier = Modifier.weight(1f),
-                    leadingIcon = { Icon(Icons.Default.PhoneAndroid, contentDescription = null) }
+                    leadingIcon = { Icon(Icons.Default.PhoneAndroid, contentDescription = null) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    isError = cellPhoneError != null,
+                    supportingText = cellPhoneError?.let { { Text(it) } }
                 )
             }
 
             OutlinedTextField(
                 value = email,
-                onValueChange = { email = it },
+                onValueChange = {
+                    email = it
+                    emailError = null
+                },
                 label = { Text("Email") },
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) }
+                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                isError = emailError != null,
+                supportingText = emailError?.let { { Text(it) } }
             )
 
             OutlinedTextField(
@@ -165,43 +252,37 @@ fun AddFarmerScreen(
             ) {
                 OutlinedTextField(
                     value = latitude,
-                    onValueChange = { latitude = it },
+                    onValueChange = {
+                        latitude = it
+                        latitudeError = null
+                    },
                     label = { Text("Latitude") },
                     modifier = Modifier.weight(1f),
-                    leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) }
+                    leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = latitudeError != null,
+                    supportingText = latitudeError?.let { { Text(it) } }
                 )
 
                 OutlinedTextField(
                     value = longitude,
-                    onValueChange = { longitude = it },
+                    onValueChange = {
+                        longitude = it
+                        longitudeError = null
+                    },
                     label = { Text("Longitude") },
                     modifier = Modifier.weight(1f),
-                    leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) }
+                    leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = longitudeError != null,
+                    supportingText = longitudeError?.let { { Text(it) } }
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = {
-                    val newFarmer = Farmer(
-                        id = 0,
-                        name = name,
-                        farmName = farmName,
-                        address = address,
-                        phone = phone,
-                        cellPhone = cellPhone,
-                        email = email,
-                        type = type,
-                        spouse = spouse,
-                        latitude = latitude.toDoubleOrNull(),
-                        longitude = longitude.toDoubleOrNull(),
-                        isFavorite = false,
-                        healthStatus = "HEALTHY",
-                        healthNotes = ""
-                    )
-                    onSave(newFarmer)
-                },
+                onClick = { saveFarmer() },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = name.isNotBlank() && farmName.isNotBlank()
             ) {
@@ -231,6 +312,63 @@ fun EditFarmerScreen(
     var latitude by remember { mutableStateOf(farmer.latitude?.toString() ?: "") }
     var longitude by remember { mutableStateOf(farmer.longitude?.toString() ?: "") }
 
+    // Validation error states
+    var nameError by remember { mutableStateOf<String?>(null) }
+    var farmNameError by remember { mutableStateOf<String?>(null) }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var phoneError by remember { mutableStateOf<String?>(null) }
+    var cellPhoneError by remember { mutableStateOf<String?>(null) }
+    var latitudeError by remember { mutableStateOf<String?>(null) }
+    var longitudeError by remember { mutableStateOf<String?>(null) }
+
+    fun validateAndSave() {
+        var isValid = true
+
+        val nameValidation = ValidationUtils.validateRequired(name, "Name")
+        nameError = nameValidation.errorMessage
+        if (!nameValidation.isValid) isValid = false
+
+        val farmNameValidation = ValidationUtils.validateRequired(farmName, "Farm Name")
+        farmNameError = farmNameValidation.errorMessage
+        if (!farmNameValidation.isValid) isValid = false
+
+        val emailValidation = ValidationUtils.validateEmail(email)
+        emailError = emailValidation.errorMessage
+        if (!emailValidation.isValid) isValid = false
+
+        val phoneValidation = ValidationUtils.validatePhone(phone)
+        phoneError = phoneValidation.errorMessage
+        if (!phoneValidation.isValid) isValid = false
+
+        val cellPhoneValidation = ValidationUtils.validatePhone(cellPhone)
+        cellPhoneError = cellPhoneValidation.errorMessage
+        if (!cellPhoneValidation.isValid) isValid = false
+
+        val latValidation = ValidationUtils.validateLatitude(latitude)
+        latitudeError = latValidation.errorMessage
+        if (!latValidation.isValid) isValid = false
+
+        val lonValidation = ValidationUtils.validateLongitude(longitude)
+        longitudeError = lonValidation.errorMessage
+        if (!lonValidation.isValid) isValid = false
+
+        if (isValid) {
+            val updatedFarmer = farmer.copy(
+                name = SanitizationUtils.sanitizeText(name),
+                farmName = SanitizationUtils.sanitizeText(farmName),
+                address = SanitizationUtils.sanitizeAddress(address),
+                phone = SanitizationUtils.sanitizePhone(phone),
+                cellPhone = SanitizationUtils.sanitizePhone(cellPhone),
+                email = SanitizationUtils.sanitizeEmail(email),
+                type = SanitizationUtils.sanitizeText(type),
+                spouse = SanitizationUtils.sanitizeText(spouse),
+                latitude = latitude.toDoubleOrNull(),
+                longitude = longitude.toDoubleOrNull()
+            )
+            onSave(updatedFarmer)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -241,23 +379,7 @@ fun EditFarmerScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            val updatedFarmer = farmer.copy(
-                                name = name,
-                                farmName = farmName,
-                                address = address,
-                                phone = phone,
-                                cellPhone = cellPhone,
-                                email = email,
-                                type = type,
-                                spouse = spouse,
-                                latitude = latitude.toDoubleOrNull(),
-                                longitude = longitude.toDoubleOrNull()
-                            )
-                            onSave(updatedFarmer)
-                        }
-                    ) {
+                    IconButton(onClick = { validateAndSave() }) {
                         Icon(Icons.Default.Save, contentDescription = "Save")
                     }
                 },
@@ -278,18 +400,28 @@ fun EditFarmerScreen(
         ) {
             OutlinedTextField(
                 value = name,
-                onValueChange = { name = it },
+                onValueChange = {
+                    name = it
+                    nameError = null
+                },
                 label = { Text("Name") },
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
+                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                isError = nameError != null,
+                supportingText = nameError?.let { { Text(it) } }
             )
 
             OutlinedTextField(
                 value = farmName,
-                onValueChange = { farmName = it },
+                onValueChange = {
+                    farmName = it
+                    farmNameError = null
+                },
                 label = { Text("Farm Name") },
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Default.Home, contentDescription = null) }
+                leadingIcon = { Icon(Icons.Default.Home, contentDescription = null) },
+                isError = farmNameError != null,
+                supportingText = farmNameError?.let { { Text(it) } }
             )
 
             OutlinedTextField(
@@ -307,27 +439,45 @@ fun EditFarmerScreen(
             ) {
                 OutlinedTextField(
                     value = phone,
-                    onValueChange = { phone = it },
+                    onValueChange = {
+                        phone = it
+                        phoneError = null
+                    },
                     label = { Text("Phone") },
                     modifier = Modifier.weight(1f),
-                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) }
+                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    isError = phoneError != null,
+                    supportingText = phoneError?.let { { Text(it) } }
                 )
 
                 OutlinedTextField(
                     value = cellPhone,
-                    onValueChange = { cellPhone = it },
+                    onValueChange = {
+                        cellPhone = it
+                        cellPhoneError = null
+                    },
                     label = { Text("Cell") },
                     modifier = Modifier.weight(1f),
-                    leadingIcon = { Icon(Icons.Default.PhoneAndroid, contentDescription = null) }
+                    leadingIcon = { Icon(Icons.Default.PhoneAndroid, contentDescription = null) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    isError = cellPhoneError != null,
+                    supportingText = cellPhoneError?.let { { Text(it) } }
                 )
             }
 
             OutlinedTextField(
                 value = email,
-                onValueChange = { email = it },
+                onValueChange = {
+                    email = it
+                    emailError = null
+                },
                 label = { Text("Email") },
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) }
+                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                isError = emailError != null,
+                supportingText = emailError?.let { { Text(it) } }
             )
 
             OutlinedTextField(
@@ -350,16 +500,28 @@ fun EditFarmerScreen(
             ) {
                 OutlinedTextField(
                     value = latitude,
-                    onValueChange = { latitude = it },
+                    onValueChange = {
+                        latitude = it
+                        latitudeError = null
+                    },
                     label = { Text("Latitude") },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = latitudeError != null,
+                    supportingText = latitudeError?.let { { Text(it) } }
                 )
 
                 OutlinedTextField(
                     value = longitude,
-                    onValueChange = { longitude = it },
+                    onValueChange = {
+                        longitude = it
+                        longitudeError = null
+                    },
                     label = { Text("Longitude") },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = longitudeError != null,
+                    supportingText = longitudeError?.let { { Text(it) } }
                 )
             }
         }

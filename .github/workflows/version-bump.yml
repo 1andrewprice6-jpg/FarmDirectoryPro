@@ -1,0 +1,143 @@
+name: Version Bump
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      create_release:
+        description: 'Create release after bump'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  bump-version:
+    name: Bump Version
+    runs-on: ubuntu-latest
+
+    outputs:
+      new_version: ${{ steps.bump.outputs.new_version }}
+      new_version_code: ${{ steps.bump.outputs.new_version_code }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Configure Git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Get current version
+      id: current
+      run: |
+        CURRENT_VERSION=$(grep 'versionName = ' app/build.gradle.kts | sed 's/.*versionName = "\(.*\)".*/\1/')
+        CURRENT_CODE=$(grep 'versionCode = ' app/build.gradle.kts | sed 's/.*versionCode = \(.*\)/\1/')
+        echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        echo "code=$CURRENT_CODE" >> $GITHUB_OUTPUT
+        echo "Current version: $CURRENT_VERSION (Code: $CURRENT_CODE)"
+
+    - name: Calculate new version
+      id: bump
+      run: |
+        CURRENT="${{ steps.current.outputs.version }}"
+        IFS='.' read -ra VER <<< "$CURRENT"
+        MAJOR=${VER[0]}
+        MINOR=${VER[1]}
+        PATCH=${VER[2]}
+
+        case "${{ github.event.inputs.bump_type }}" in
+          major)
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            ;;
+          minor)
+            MINOR=$((MINOR + 1))
+            PATCH=0
+            ;;
+          patch)
+            PATCH=$((PATCH + 1))
+            ;;
+        esac
+
+        NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+        NEW_VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
+
+        echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "new_version_code=$NEW_VERSION_CODE" >> $GITHUB_OUTPUT
+
+        echo "New version: $NEW_VERSION (Code: $NEW_VERSION_CODE)"
+
+    - name: Update build.gradle.kts
+      run: |
+        sed -i "s/versionCode = .*/versionCode = ${{ steps.bump.outputs.new_version_code }}/" app/build.gradle.kts
+        sed -i "s/versionName = .*/versionName = \"${{ steps.bump.outputs.new_version }}\"/" app/build.gradle.kts
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        if [ -z "$LAST_TAG" ]; then
+          CHANGES=$(git log --pretty=format:"- %s" --reverse | head -20)
+        else
+          CHANGES=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s" --reverse)
+        fi
+
+        # Create CHANGELOG entry
+        DATE=$(date +%Y-%m-%d)
+        cat > CHANGELOG_ENTRY.md << EOF
+        ## [${{ steps.bump.outputs.new_version }}] - $DATE
+
+        ### Changes
+        $CHANGES
+
+        EOF
+
+        # Update or create CHANGELOG.md
+        if [ -f CHANGELOG.md ]; then
+          cat CHANGELOG_ENTRY.md CHANGELOG.md > CHANGELOG.tmp
+          mv CHANGELOG.tmp CHANGELOG.md
+        else
+          mv CHANGELOG_ENTRY.md CHANGELOG.md
+        fi
+
+        rm -f CHANGELOG_ENTRY.md
+
+    - name: Commit changes
+      run: |
+        git add app/build.gradle.kts CHANGELOG.md
+        git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }}"
+        git push origin main
+
+    - name: Create and push tag
+      if: github.event.inputs.create_release == 'true'
+      run: |
+        git tag -a "v${{ steps.bump.outputs.new_version }}" -m "Release v${{ steps.bump.outputs.new_version }}"
+        git push origin "v${{ steps.bump.outputs.new_version }}"
+
+    - name: Summary
+      run: |
+        echo "## Version Bump Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Version Information" >> $GITHUB_STEP_SUMMARY
+        echo "- Previous Version: ${{ steps.current.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- New Version: ${{ steps.bump.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Version Code: ${{ steps.bump.outputs.new_version_code }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Bump Type: ${{ github.event.inputs.bump_type }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ github.event.inputs.create_release }}" == "true" ]; then
+          echo "✅ Release tag created: v${{ steps.bump.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "ℹ️ No release tag created. Trigger manually or set create_release to true." >> $GITHUB_STEP_SUMMARY
+        fi

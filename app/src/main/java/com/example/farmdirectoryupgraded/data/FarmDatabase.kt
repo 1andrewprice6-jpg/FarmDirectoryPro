@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 
 @Database(
     entities = [Farmer::class, AttendanceRecord::class, LogEntry::class],
-    version = 3, // Updated for AttendanceRecord and LogEntry entities
+    version = 4, // Updated for security improvements: added indexes to Farmer entity
     exportSchema = false
 )
 abstract class FarmDatabase : RoomDatabase() {

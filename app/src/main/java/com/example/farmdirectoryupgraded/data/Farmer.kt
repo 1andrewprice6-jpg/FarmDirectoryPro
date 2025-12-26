@@ -1,9 +1,23 @@
 package com.example.farmdirectoryupgraded.data
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "farmers")
+/**
+ * Farmer entity with database indexes for performance optimization
+ * Indexes on frequently queried columns: name, type, isFavorite, healthStatus
+ */
+@Entity(
+    tableName = "farmers",
+    indices = [
+        Index(value = ["name"], name = "idx_farmer_name"),
+        Index(value = ["type"], name = "idx_farmer_type"),
+        Index(value = ["isFavorite"], name = "idx_farmer_favorite"),
+        Index(value = ["healthStatus"], name = "idx_farmer_health_status"),
+        Index(value = ["farmName"], name = "idx_farmer_farm_name")
+    ]
+)
 data class Farmer(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,

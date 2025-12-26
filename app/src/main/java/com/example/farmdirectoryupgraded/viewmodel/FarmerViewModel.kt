@@ -42,8 +42,19 @@ class FarmerViewModel(
     private val _selectedType = MutableStateFlow("All")
     val selectedType: StateFlow<String> = _selectedType.asStateFlow()
 
-    // WebSocket connection state
+    // WebSocket connection state - enhanced
     val isConnected: StateFlow<Boolean> = webSocketService.isConnected
+    val connectionState: StateFlow<ConnectionState> = webSocketService.connectionState
+    val isLoading: StateFlow<Boolean> = webSocketService.isLoading
+    val connectionErrorMessage: StateFlow<String?> = webSocketService.connectionErrorMessage
+
+    // User-facing error messages
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    // Success messages
+    private val _successMessage = MutableStateFlow<String?>(null)
+    val successMessage: StateFlow<String?> = _successMessage.asStateFlow()
 
     // Real-time location updates
     private val _recentLocationUpdate = MutableStateFlow<LocationBroadcast?>(null)
@@ -109,6 +120,8 @@ class FarmerViewModel(
     init {
         // Collect WebSocket events
         collectWebSocketEvents()
+        // Collect WebSocket errors
+        collectWebSocketErrors()
     }
 
     val farmers: StateFlow<List<Farmer>> = combine(
@@ -181,68 +194,206 @@ class FarmerViewModel(
         // Location updates
         viewModelScope.launch {
             webSocketService.locationUpdates.collect { locationUpdate ->
-                _recentLocationUpdate.value = locationUpdate
-                Log.d(TAG, "Location updated: ${locationUpdate.entityId}")
+                try {
+                    _recentLocationUpdate.value = locationUpdate
+                    Log.d(TAG, "Location updated: ${locationUpdate.entityId}")
 
-                // TODO: Update local database with new location
-                // This would sync the real-time update to the local farmer record
+                    // Update local database with new location
+                    val farmerId = locationUpdate.entityId.toIntOrNull()
+                    farmerId?.let { id ->
+                        val farmer = farmers.value.find { it.id == id }
+                        farmer?.let {
+                            farmerDao.updateFarmer(
+                                it.copy(
+                                    latitude = locationUpdate.location.latitude,
+                                    longitude = locationUpdate.location.longitude,
+                                    lastLocationUpdate = System.currentTimeMillis()
+                                )
+                            )
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing location update", e)
+                    _errorMessage.value = "Failed to process location update: ${e.message}"
+                }
             }
         }
 
         // Health alerts
         viewModelScope.launch {
             webSocketService.healthAlerts.collect { alert ->
-                _healthAlerts.emit(alert)
-                Log.d(TAG, "Health alert: ${alert.entityId}")
+                try {
+                    _healthAlerts.emit(alert)
+                    Log.d(TAG, "Health alert: ${alert.entityId}")
+                    addLog("WebSocket", "WARNING", "Health alert received", "Entity: ${alert.entityId}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing health alert", e)
+                }
             }
         }
 
         // Critical alerts
         viewModelScope.launch {
             webSocketService.criticalAlerts.collect { alert ->
-                _criticalAlerts.emit(alert)
-                Log.d(TAG, "CRITICAL alert: ${alert.entityId}")
+                try {
+                    _criticalAlerts.emit(alert)
+                    Log.d(TAG, "CRITICAL alert: ${alert.entityId}")
+                    addLog("WebSocket", "ERROR", "CRITICAL alert received", "Entity: ${alert.entityId}, Notes: ${alert.healthNotes}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing critical alert", e)
+                }
             }
         }
 
         // Worker joined
         viewModelScope.launch {
             webSocketService.workerJoined.collect { joined ->
-                Log.d(TAG, "${joined.workerName} joined the farm")
+                try {
+                    Log.d(TAG, "${joined.workerName} joined the farm")
+                    _successMessage.value = "${joined.workerName} joined"
+                    addLog("WebSocket", "INFO", "Worker joined", "Worker: ${joined.workerName}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing worker joined", e)
+                }
             }
         }
 
         // Worker left
         viewModelScope.launch {
             webSocketService.workerLeft.collect { left ->
-                Log.d(TAG, "${left.workerName} left the farm")
+                try {
+                    Log.d(TAG, "${left.workerName} left the farm")
+                    addLog("WebSocket", "INFO", "Worker left", "Worker: ${left.workerName}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing worker left", e)
+                }
             }
         }
     }
 
     /**
-     * Connect to WebSocket server
+     * Collect WebSocket errors and display user-friendly messages
+     */
+    private fun collectWebSocketErrors() {
+        viewModelScope.launch {
+            webSocketService.errors.collect { error ->
+                val errorMsg = when (error) {
+                    is WebSocketError.ConnectionFailed -> {
+                        "Connection failed: ${error.message}"
+                    }
+                    is WebSocketError.JoinFarmFailed -> {
+                        "Failed to join farm ${error.farmId}: ${error.reason}"
+                    }
+                    is WebSocketError.NetworkError -> {
+                        "Network error: ${error.message}"
+                    }
+                    is WebSocketError.TimeoutError -> {
+                        "Operation timed out: ${error.operation}"
+                    }
+                    is WebSocketError.InvalidToken -> {
+                        "Authentication failed: ${error.message}"
+                    }
+                    is WebSocketError.BackendOffline -> {
+                        "Backend server is offline (${error.backendUrl})"
+                    }
+                    is WebSocketError.UnknownError -> {
+                        "Error: ${error.message}"
+                    }
+                }
+
+                _errorMessage.value = errorMsg
+                addLog("WebSocket", "ERROR", "WebSocket error", errorMsg)
+                Log.e(TAG, "WebSocket error: $errorMsg")
+            }
+        }
+    }
+
+    /**
+     * Clear error message
+     */
+    fun clearErrorMessage() {
+        _errorMessage.value = null
+        webSocketService.clearError()
+    }
+
+    /**
+     * Clear success message
+     */
+    fun clearSuccessMessage() {
+        _successMessage.value = null
+    }
+
+    /**
+     * Connect to WebSocket server with error handling
      */
     fun connectToBackend() {
-        webSocketService.connect()
+        viewModelScope.launch {
+            try {
+                webSocketService.connect()
+                addLog("WebSocket", "INFO", "Connecting to backend", "")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to connect", e)
+                _errorMessage.value = "Failed to connect: ${e.message}"
+                addLog("WebSocket", "ERROR", "Connection failed", e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    /**
+     * Retry WebSocket connection
+     */
+    fun retryConnection() {
+        viewModelScope.launch {
+            try {
+                webSocketService.retryConnection()
+                addLog("WebSocket", "INFO", "Retrying connection", "")
+            } catch (e: Exception) {
+                Log.e(TAG, "Retry failed", e)
+                _errorMessage.value = "Retry failed: ${e.message}"
+            }
+        }
     }
 
     /**
      * Disconnect from WebSocket server
      */
     fun disconnectFromBackend() {
-        webSocketService.disconnect()
+        viewModelScope.launch {
+            try {
+                webSocketService.disconnect()
+                _successMessage.value = "Disconnected from backend"
+                addLog("WebSocket", "INFO", "Disconnected from backend", "")
+            } catch (e: Exception) {
+                Log.e(TAG, "Disconnect error", e)
+            }
+        }
     }
 
     /**
-     * Join a farm for real-time monitoring
+     * Join a farm for real-time monitoring with enhanced error handling
      */
-    fun joinFarm(farmId: String, workerId: String, workerName: String) {
-        webSocketService.joinFarm(farmId, workerId, workerName) { success ->
-            if (success) {
-                Log.d(TAG, "Successfully joined farm: $farmId")
-            } else {
-                Log.e(TAG, "Failed to join farm: $farmId")
+    fun joinFarm(farmId: String, workerId: String, workerName: String, onResult: ((Boolean) -> Unit)? = null) {
+        viewModelScope.launch {
+            try {
+                webSocketService.joinFarm(farmId, workerId, workerName) { success ->
+                    viewModelScope.launch {
+                        if (success) {
+                            Log.d(TAG, "Successfully joined farm: $farmId")
+                            _successMessage.value = "Joined farm: $farmId"
+                            addLog("WebSocket", "SUCCESS", "Joined farm", "Farm ID: $farmId, Worker: $workerName")
+                        } else {
+                            Log.e(TAG, "Failed to join farm: $farmId")
+                            _errorMessage.value = "Failed to join farm: $farmId"
+                            addLog("WebSocket", "ERROR", "Failed to join farm", "Farm ID: $farmId")
+                        }
+                        onResult?.invoke(success)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Join farm exception", e)
+                _errorMessage.value = "Exception joining farm: ${e.message}"
+                addLog("WebSocket", "ERROR", "Join farm exception", e.message ?: "Unknown error")
+                onResult?.invoke(false)
             }
         }
     }

@@ -1,0 +1,44 @@
+codecov:
+  require_ci_to_pass: yes
+  notify:
+    wait_for_ci: yes
+
+coverage:
+  precision: 2
+  round: down
+  range: "50...90"
+
+  status:
+    project:
+      default:
+        target: 40%
+        threshold: 5%
+        base: auto
+    patch:
+      default:
+        target: 60%
+        threshold: 10%
+        base: auto
+
+parsers:
+  gcov:
+    branch_detection:
+      conditional: yes
+      loop: yes
+      method: no
+      macro: no
+
+comment:
+  layout: "reach,diff,flags,files,footer"
+  behavior: default
+  require_changes: no
+  require_base: no
+  require_head: yes
+
+ignore:
+  - "**/*Test*.kt"
+  - "**/*Test*.java"
+  - "**/test/**"
+  - "**/androidTest/**"
+  - "**/BuildConfig.*"
+  - "**/R.class"

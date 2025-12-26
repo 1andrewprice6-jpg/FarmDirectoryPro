@@ -16,6 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.farmdirectoryupgraded.data.AppSettings
 import com.example.farmdirectoryupgraded.viewmodel.FarmerViewModel
+import com.example.farmdirectoryupgraded.utils.ValidationUtils
+import com.example.farmdirectoryupgraded.utils.SanitizationUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -34,6 +36,31 @@ fun SettingsScreen(
     var farmId by remember { mutableStateOf(settings.farmId) }
     var workerName by remember { mutableStateOf(settings.workerName) }
     var autoConnect by remember { mutableStateOf(settings.autoConnect) }
+
+    // Validation error states
+    var backendUrlError by remember { mutableStateOf<String?>(null) }
+    var farmIdError by remember { mutableStateOf<String?>(null) }
+    var workerNameError by remember { mutableStateOf<String?>(null) }
+    var showValidationError by remember { mutableStateOf(false) }
+
+    // Validate before connecting
+    fun validateSettings(): Boolean {
+        var isValid = true
+
+        val urlValidation = ValidationUtils.validateUrl(backendUrl)
+        backendUrlError = urlValidation.errorMessage
+        if (!urlValidation.isValid) isValid = false
+
+        val farmIdValidation = ValidationUtils.validateFarmId(farmId)
+        farmIdError = farmIdValidation.errorMessage
+        if (!farmIdValidation.isValid) isValid = false
+
+        val workerNameValidation = ValidationUtils.validateWorkerName(workerName)
+        workerNameError = workerNameValidation.errorMessage
+        if (!workerNameValidation.isValid) isValid = false
+
+        return isValid
+    }
 
     Scaffold(
         topBar = {
@@ -70,12 +97,16 @@ fun SettingsScreen(
                 OutlinedTextField(
                     value = backendUrl,
                     onValueChange = {
-                        backendUrl = it
-                        settings.backendUrl = it
+                        backendUrl = SanitizationUtils.sanitizeUrl(it)
+                        backendUrlError = null
+                        settings.backendUrl = backendUrl
                     },
-                    label = { Text("Backend URL") },
+                    label = { Text("Backend URL *") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = backendUrlError != null,
+                    supportingText = backendUrlError?.let { { Text(it) } },
+                    placeholder = { Text("ws://example.com:4000 or http://example.com:4000") }
                 )
             }
 
@@ -83,12 +114,15 @@ fun SettingsScreen(
                 OutlinedTextField(
                     value = farmId,
                     onValueChange = {
-                        farmId = it
-                        settings.farmId = it
+                        farmId = SanitizationUtils.sanitizeAlphanumeric(it)
+                        farmIdError = null
+                        settings.farmId = farmId
                     },
-                    label = { Text("Farm ID") },
+                    label = { Text("Farm ID *") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = farmIdError != null,
+                    supportingText = farmIdError?.let { { Text(it) } }
                 )
             }
 
@@ -96,12 +130,15 @@ fun SettingsScreen(
                 OutlinedTextField(
                     value = workerName,
                     onValueChange = {
-                        workerName = it
-                        settings.workerName = it
+                        workerName = SanitizationUtils.sanitizeText(it)
+                        workerNameError = null
+                        settings.workerName = workerName
                     },
-                    label = { Text("Worker Name") },
+                    label = { Text("Worker Name *") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = workerNameError != null,
+                    supportingText = workerNameError?.let { { Text(it) } }
                 )
             }
 
@@ -124,24 +161,144 @@ fun SettingsScreen(
 
             item {
                 val isConnected by viewModel.isConnected.collectAsState()
+                val connectionState by viewModel.connectionState.collectAsState()
+                val isLoading by viewModel.isLoading.collectAsState()
+                val connectionErrorMessage by viewModel.connectionErrorMessage.collectAsState()
 
-                Button(
-                    onClick = {
-                        if (isConnected) {
-                            viewModel.disconnectFromBackend()
-                        } else {
-                            viewModel.connectToBackend()
-                            viewModel.joinFarm(farmId, "worker-${System.currentTimeMillis()}", workerName)
+                // Connection status card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = when (connectionState) {
+                            com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTED -> MaterialTheme.colorScheme.primaryContainer
+                            com.example.farmdirectoryupgraded.data.ConnectionState.ERROR -> MaterialTheme.colorScheme.errorContainer
+                            com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTING,
+                            com.example.farmdirectoryupgraded.data.ConnectionState.RECONNECTING -> MaterialTheme.colorScheme.secondaryContainer
+                            else -> MaterialTheme.colorScheme.surfaceVariant
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        if (isConnected) Icons.Default.Close else Icons.Default.Wifi,
-                        contentDescription = null
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (isConnected) "Disconnect" else "Connect Now")
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Connection Status",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = when (connectionState) {
+                                com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTED -> "Connected to backend"
+                                com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTING -> "Connecting to backend..."
+                                com.example.farmdirectoryupgraded.data.ConnectionState.RECONNECTING -> "Reconnecting to backend..."
+                                com.example.farmdirectoryupgraded.data.ConnectionState.ERROR -> "Connection error"
+                                com.example.farmdirectoryupgraded.data.ConnectionState.DISCONNECTED -> "Not connected"
+                            },
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        if (connectionErrorMessage != null && connectionState == com.example.farmdirectoryupgraded.data.ConnectionState.ERROR) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = connectionErrorMessage!!,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                val isConnected by viewModel.isConnected.collectAsState()
+                val isLoading by viewModel.isLoading.collectAsState()
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            if (isConnected) {
+                                viewModel.disconnectFromBackend()
+                            } else {
+                                if (validateSettings()) {
+                                    viewModel.connectToBackend()
+                                    viewModel.joinFarm(
+                                        SanitizationUtils.sanitizeAlphanumeric(farmId),
+                                        "worker-${System.currentTimeMillis()}",
+                                        SanitizationUtils.sanitizeText(workerName)
+                                    )
+                                } else {
+                                    showValidationError = true
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isLoading
+                    ) {
+                        Icon(
+                            if (isConnected) Icons.Default.Close else Icons.Default.Wifi,
+                            contentDescription = null
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (isConnected) "Disconnect" else "Connect")
+                    }
+
+                    if (!isConnected) {
+                        OutlinedButton(
+                            onClick = { viewModel.retryConnection() },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isLoading
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Retry")
+                        }
+                    }
+                }
+            }
+
+            if (showValidationError) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Please fix validation errors before connecting",
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
                 }
             }
         }

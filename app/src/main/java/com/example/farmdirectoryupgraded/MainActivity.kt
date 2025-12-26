@@ -60,15 +60,127 @@ fun FarmDirectoryApp() {
     var selectedFarmer by remember { mutableStateOf<Farmer?>(null) }
     val appSettings = remember { AppSettings(context) }
 
+    // WebSocket state management
+    val connectionState by viewModel.connectionState.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+    val successMessage by viewModel.successMessage.collectAsState()
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var showSuccessSnackbar by remember { mutableStateOf(false) }
+
     // Connect to WebSocket backend on app start
     LaunchedEffect(appSettings.backendUrl) {
         if (appSettings.autoConnect) {
             viewModel.connectToBackend()
+            // Wait a bit for connection to establish
+            kotlinx.coroutines.delay(1000)
             viewModel.joinFarm(
                 farmId = appSettings.farmId,
                 workerId = "worker-${System.currentTimeMillis()}",
                 workerName = appSettings.workerName
             )
+        }
+    }
+
+    // Show error dialog when error occurs
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            showErrorDialog = true
+        }
+    }
+
+    // Show success snackbar when success message occurs
+    LaunchedEffect(successMessage) {
+        if (successMessage != null) {
+            showSuccessSnackbar = true
+            kotlinx.coroutines.delay(3000) // Auto-dismiss after 3 seconds
+            viewModel.clearSuccessMessage()
+            showSuccessSnackbar = false
+        }
+    }
+
+    // Error Dialog
+    if (showErrorDialog && errorMessage != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = {
+                showErrorDialog = false
+                viewModel.clearErrorMessage()
+            },
+            icon = {
+                Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+            },
+            title = {
+                Text("Connection Error")
+            },
+            text = {
+                Column {
+                    Text(errorMessage!!)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Connection state: ${connectionState.name}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showErrorDialog = false
+                        viewModel.clearErrorMessage()
+                        viewModel.retryConnection()
+                    }
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Retry")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showErrorDialog = false
+                        viewModel.clearErrorMessage()
+                    }
+                ) {
+                    Text("Dismiss")
+                }
+            }
+        )
+    }
+
+    // Success Snackbar
+    if (showSuccessSnackbar && successMessage != null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = successMessage!!,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
         }
     }
 
@@ -164,8 +276,11 @@ fun FarmerListScreen(
 
     // Real-time WebSocket state
     val isConnected by viewModel.isConnected.collectAsState()
+    val connectionState by viewModel.connectionState.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     val activeWorkers by viewModel.activeWorkers.collectAsState()
     val recentLocationUpdate by viewModel.recentLocationUpdate.collectAsState()
+    val connectionErrorMessage by viewModel.connectionErrorMessage.collectAsState()
 
     // Snackbar for health alerts
     val snackbarHostState = remember { SnackbarHostState() }
@@ -199,19 +314,39 @@ fun FarmerListScreen(
                             "Farm Directory",
                             fontWeight = FontWeight.Bold
                         )
-                        // Connection status indicator
+                        // Enhanced connection status indicator
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                Icons.Default.Circle,
-                                contentDescription = if (isConnected) "Connected" else "Disconnected",
-                                modifier = Modifier.size(8.dp),
-                                tint = if (isConnected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
-                            )
+                            // Loading indicator
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(12.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Circle,
+                                    contentDescription = connectionState.name,
+                                    modifier = Modifier.size(8.dp),
+                                    tint = when (connectionState) {
+                                        com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTED -> MaterialTheme.colorScheme.tertiary
+                                        com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTING -> MaterialTheme.colorScheme.primary
+                                        com.example.farmdirectoryupgraded.data.ConnectionState.RECONNECTING -> MaterialTheme.colorScheme.secondary
+                                        com.example.farmdirectoryupgraded.data.ConnectionState.ERROR -> MaterialTheme.colorScheme.error
+                                        com.example.farmdirectoryupgraded.data.ConnectionState.DISCONNECTED -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
+                            }
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (isConnected) "Live (${activeWorkers.size} workers)" else "Offline",
+                                text = when (connectionState) {
+                                    com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTED -> "Live (${activeWorkers.size} workers)"
+                                    com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTING -> "Connecting..."
+                                    com.example.farmdirectoryupgraded.data.ConnectionState.RECONNECTING -> "Reconnecting..."
+                                    com.example.farmdirectoryupgraded.data.ConnectionState.ERROR -> "Error"
+                                    com.example.farmdirectoryupgraded.data.ConnectionState.DISCONNECTED -> "Offline"
+                                },
                                 style = MaterialTheme.typography.labelSmall
                             )
                         }
@@ -315,6 +450,83 @@ fun FarmerListScreen(
                 }
             }
 
+            // Connection error banner with retry button
+            if (connectionState == com.example.farmdirectoryupgraded.data.ConnectionState.ERROR && connectionErrorMessage != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Error,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Connection Error",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                text = connectionErrorMessage!!,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                        Button(
+                            onClick = { viewModel.retryConnection() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null)
+                        }
+                    }
+                }
+            }
+
+            // Reconnecting indicator
+            if (connectionState == com.example.farmdirectoryupgraded.data.ConnectionState.RECONNECTING) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Reconnecting to backend...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
             // Real-time location update indicator
             recentLocationUpdate?.let { update ->
                 Card(
@@ -339,7 +551,7 @@ fun FarmerListScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "📍 Location Updated",
+                                text = "Location Updated",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold
                             )
