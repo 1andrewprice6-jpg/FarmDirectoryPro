@@ -10,14 +10,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Database(
-    entities = [Farmer::class, AttendanceRecord::class, LogEntry::class],
-    version = 5, // Updated: added company field to Farmer entity
+    entities = [
+        Farmer::class,
+        AttendanceRecord::class,
+        LogEntry::class,
+        Employee::class,
+        VehicleLog::class,
+        FuelLog::class
+    ],
+    version = 6, // Updated: added Employee, VehicleLog, FuelLog entities; redesigned AttendanceRecord for employees
     exportSchema = false
 )
 abstract class FarmDatabase : RoomDatabase() {
     abstract fun farmerDao(): FarmerDao
     abstract fun attendanceDao(): AttendanceDao
     abstract fun logDao(): LogDao
+    abstract fun employeeDao(): EmployeeDao
+    abstract fun vehicleLogDao(): VehicleLogDao
+    abstract fun fuelLogDao(): FuelLogDao
 
     companion object {
         @Volatile
