@@ -29,6 +29,7 @@ data class Farmer(
     val cellPhone: String = "",
     val email: String = "",
     val type: String = "", // Pullet, Breeder, etc.
+    val company: String = "", // Perdue, Mountaire, etc.
     val isFavorite: Boolean = false,
 
     // GPS Location (for real-time tracking)

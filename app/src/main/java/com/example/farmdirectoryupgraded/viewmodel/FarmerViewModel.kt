@@ -596,12 +596,13 @@ class FarmerViewModel(
             val farmer = Farmer(
                 name = farmerMap["owner"] ?: farmerMap["Owner"] ?: farmerMap["name"] ?: farmerMap["Name"] ?: "",
                 spouse = farmerMap["spouse"] ?: farmerMap["Spouse"] ?: "",
-                farmName = farmerMap["farmName"] ?: farmerMap["FarmName"] ?: farmerMap["farm_name"] ?: farmerMap["name"] ?: farmerMap["Name"] ?: "",
+                farmName = farmerMap["name"] ?: farmerMap["Name"] ?: farmerMap["farmName"] ?: farmerMap["FarmName"] ?: farmerMap["farm_name"] ?: "",
                 address = farmerMap["address"] ?: farmerMap["Address"] ?: "",
                 phone = farmerMap["phone"] ?: farmerMap["Phone"] ?: "",
                 cellPhone = farmerMap["cellPhone"] ?: farmerMap["CellPhone"] ?: farmerMap["cell_phone"] ?: "",
                 email = farmerMap["email"] ?: farmerMap["Email"] ?: "",
                 type = farmerMap["type"] ?: farmerMap["Type"] ?: "",
+                company = farmerMap["company"] ?: farmerMap["Company"] ?: "",
                 latitude = farmerMap["latitude"]?.toDoubleOrNull() ?: farmerMap["Latitude"]?.toDoubleOrNull(),
                 longitude = farmerMap["longitude"]?.toDoubleOrNull() ?: farmerMap["Longitude"]?.toDoubleOrNull()
             )
