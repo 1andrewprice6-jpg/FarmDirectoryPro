@@ -37,7 +37,7 @@ class AppSettings(context: Context) {
         set(value) = prefs.edit().putString(KEY_WORKER_NAME, value).apply()
 
     var autoConnect: Boolean
-        get() = prefs.getBoolean(KEY_AUTO_CONNECT, true)
+        get() = prefs.getBoolean(KEY_AUTO_CONNECT, false)
         set(value) = prefs.edit().putBoolean(KEY_AUTO_CONNECT, value).apply()
 
     fun resetToDefaults() {
