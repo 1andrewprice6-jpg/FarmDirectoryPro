@@ -478,12 +478,21 @@ class FarmerViewModel(
                 val content = reader.readText()
                 reader.close()
 
-                val fileName = uri.lastPathSegment ?: ""
+                // Get actual filename from ContentResolver
+                val fileName = getFileName(uri) ?: uri.lastPathSegment ?: ""
+
+                // Also check MIME type as fallback
+                val mimeType = context.contentResolver.getType(uri) ?: ""
+
                 val importedCount = when {
-                    fileName.endsWith(".json", ignoreCase = true) -> importFromJson(content)
-                    fileName.endsWith(".csv", ignoreCase = true) -> importFromCsv(content)
+                    fileName.endsWith(".json", ignoreCase = true) || mimeType.contains("json") -> importFromJson(content)
+                    fileName.endsWith(".csv", ignoreCase = true) || mimeType.contains("csv") || mimeType.contains("comma-separated") -> importFromCsv(content)
+                    // Try to auto-detect format by content
+                    content.trimStart().startsWith("{") || content.trimStart().startsWith("[") -> importFromJson(content)
+                    content.contains(",") -> importFromCsv(content) // Likely CSV
                     else -> {
-                        addLog("Import", "ERROR", "Unsupported file format", "File: $fileName")
+                        addLog("Import", "ERROR", "Unsupported file format", "File: $fileName, MIME: $mimeType")
+                        _errorMessage.value = "Unsupported file format. Please use CSV or JSON files."
                         0
                     }
                 }
@@ -499,6 +508,65 @@ class FarmerViewModel(
                 addImportRecord(ImportMethod.FILE.name, 0, false)
             }
         }
+    }
+
+    /**
+     * Parse a CSV line handling quoted fields with commas
+     */
+    private fun parseCsvLine(line: String): List<String> {
+        val result = mutableListOf<String>()
+        val currentField = StringBuilder()
+        var insideQuotes = false
+
+        var i = 0
+        while (i < line.length) {
+            val char = line[i]
+            when {
+                char == '"' -> {
+                    // Check for escaped quote ("")
+                    if (i + 1 < line.length && line[i + 1] == '"') {
+                        currentField.append('"')
+                        i++ // Skip next quote
+                    } else {
+                        insideQuotes = !insideQuotes
+                    }
+                }
+                char == ',' && !insideQuotes -> {
+                    result.add(currentField.toString().trim())
+                    currentField.clear()
+                }
+                else -> {
+                    currentField.append(char)
+                }
+            }
+            i++
+        }
+        result.add(currentField.toString().trim())
+        return result
+    }
+
+    /**
+     * Get actual filename from content URI
+     */
+    private fun getFileName(uri: Uri): String? {
+        var result: String? = null
+        if (uri.scheme == "content") {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val displayNameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (displayNameIndex != -1) {
+                        result = cursor.getString(displayNameIndex)
+                    }
+                }
+            }
+        }
+        if (result == null) {
+            result = uri.path?.let { path ->
+                val cut = path.lastIndexOf('/')
+                if (cut != -1) path.substring(cut + 1) else path
+            }
+        }
+        return result
     }
 
     private suspend fun importFromJson(content: String): Int {
@@ -517,18 +585,18 @@ class FarmerViewModel(
         if (lines.isEmpty()) return 0
 
         val farmers = mutableListOf<Farmer>()
-        val header = lines.first().split(",").map { it.trim() }
+        val header = parseCsvLine(lines.first())
 
         for (i in 1 until lines.size) {
-            val values = lines[i].split(",").map { it.trim() }
+            val values = parseCsvLine(lines[i])
             if (values.size < 2) continue
 
             val farmerMap = header.zip(values).toMap()
 
             val farmer = Farmer(
-                name = farmerMap["name"] ?: farmerMap["Name"] ?: "",
+                name = farmerMap["owner"] ?: farmerMap["Owner"] ?: farmerMap["name"] ?: farmerMap["Name"] ?: "",
                 spouse = farmerMap["spouse"] ?: farmerMap["Spouse"] ?: "",
-                farmName = farmerMap["farmName"] ?: farmerMap["FarmName"] ?: farmerMap["farm_name"] ?: "",
+                farmName = farmerMap["farmName"] ?: farmerMap["FarmName"] ?: farmerMap["farm_name"] ?: farmerMap["name"] ?: farmerMap["Name"] ?: "",
                 address = farmerMap["address"] ?: farmerMap["Address"] ?: "",
                 phone = farmerMap["phone"] ?: farmerMap["Phone"] ?: "",
                 cellPhone = farmerMap["cellPhone"] ?: farmerMap["CellPhone"] ?: farmerMap["cell_phone"] ?: "",
