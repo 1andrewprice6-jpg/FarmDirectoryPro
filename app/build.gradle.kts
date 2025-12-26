@@ -91,6 +91,12 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    lint {
+        // Ignore JaCoCo InvalidPackage errors (JaCoCo uses java.lang.management not available on Android)
+        disable += "InvalidPackage"
+        abortOnError = false
+    }
 }
 
 dependencies {
