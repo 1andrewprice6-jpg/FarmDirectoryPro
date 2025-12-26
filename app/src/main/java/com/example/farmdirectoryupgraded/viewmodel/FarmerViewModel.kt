@@ -558,10 +558,100 @@ class FarmerViewModel(
     }
 
     // Placeholder methods for UI compatibility
-    fun importFromCamera() {
+    /**
+     * Import farmers from OCR text extracted from camera
+     */
+    fun importFromCameraText(ocrText: String) {
         viewModelScope.launch {
-            addLog("Import", "INFO", "Camera import not yet implemented", "")
+            _isLoading.value = true
+            try {
+                val count = parseOCRTextAndImport(ocrText)
+                _successMessage.value = "Imported $count farmer(s) from camera"
+                addLog("Import", "SUCCESS", "Camera import completed", "Farmers imported: $count")
+            } catch (e: Exception) {
+                _errorMessage.value = "Camera import failed: ${e.message}"
+                addLog("Import", "ERROR", "Camera import failed", e.message ?: "Unknown error")
+            } finally {
+                _isLoading.value = false
+            }
         }
+    }
+
+    /**
+     * Parse OCR text and extract farmer data
+     * Supports various formats:
+     * - Name: John Doe
+     * - Phone: 123-456-7890
+     * - Address: 123 Main St
+     * - Type: Broiler/Layer/etc
+     */
+    private suspend fun parseOCRTextAndImport(text: String): Int {
+        val lines = text.split("\n").filter { it.isNotBlank() }
+        val farmers = mutableListOf<Farmer>()
+
+        var currentFarmer = mutableMapOf<String, String>()
+
+        for (line in lines) {
+            val trimmed = line.trim()
+
+            // Parse key-value pairs
+            when {
+                trimmed.matches(Regex("(?i)name\\s*:?\\s*(.+)", RegexOption.IGNORE_CASE)) -> {
+                    val match = Regex("(?i)name\\s*:?\\s*(.+)").find(trimmed)
+                    match?.groupValues?.get(1)?.let { currentFarmer["name"] = it.trim() }
+                }
+                trimmed.matches(Regex("(?i)phone\\s*:?\\s*(.+)", RegexOption.IGNORE_CASE)) -> {
+                    val match = Regex("(?i)phone\\s*:?\\s*(.+)").find(trimmed)
+                    match?.groupValues?.get(1)?.let { currentFarmer["phone"] = it.trim() }
+                }
+                trimmed.matches(Regex("(?i)address\\s*:?\\s*(.+)", RegexOption.IGNORE_CASE)) -> {
+                    val match = Regex("(?i)address\\s*:?\\s*(.+)").find(trimmed)
+                    match?.groupValues?.get(1)?.let { currentFarmer["address"] = it.trim() }
+                }
+                trimmed.matches(Regex("(?i)type\\s*:?\\s*(.+)", RegexOption.IGNORE_CASE)) -> {
+                    val match = Regex("(?i)type\\s*:?\\s*(.+)").find(trimmed)
+                    match?.groupValues?.get(1)?.let { currentFarmer["type"] = it.trim() }
+                }
+                trimmed.matches(Regex("(?i)email\\s*:?\\s*(.+)", RegexOption.IGNORE_CASE)) -> {
+                    val match = Regex("(?i)email\\s*:?\\s*(.+)").find(trimmed)
+                    match?.groupValues?.get(1)?.let { currentFarmer["email"] = it.trim() }
+                }
+                trimmed.matches(Regex("(?i)farm\\s*name\\s*:?\\s*(.+)", RegexOption.IGNORE_CASE)) -> {
+                    val match = Regex("(?i)farm\\s*name\\s*:?\\s*(.+)").find(trimmed)
+                    match?.groupValues?.get(1)?.let { currentFarmer["farmName"] = it.trim() }
+                }
+                trimmed == "---" || trimmed == "===" -> {
+                    // Separator - save current farmer and start new one
+                    if (currentFarmer.containsKey("name") && currentFarmer.containsKey("address")) {
+                        farmers.add(createFarmerFromMap(currentFarmer))
+                        currentFarmer = mutableMapOf()
+                    }
+                }
+            }
+        }
+
+        // Add last farmer if exists
+        if (currentFarmer.containsKey("name") && currentFarmer.containsKey("address")) {
+            farmers.add(createFarmerFromMap(currentFarmer))
+        }
+
+        if (farmers.isEmpty()) {
+            throw Exception("No valid farmer data found in text. Make sure image contains Name and Address fields.")
+        }
+
+        farmerDao.insertFarmers(farmers)
+        return farmers.size
+    }
+
+    private fun createFarmerFromMap(data: Map<String, String>): Farmer {
+        return Farmer(
+            name = data["name"] ?: "",
+            phone = data["phone"] ?: "",
+            email = data["email"] ?: "",
+            address = data["address"] ?: "",
+            type = data["type"] ?: "Unknown",
+            farmName = data["farmName"] ?: ""
+        )
     }
 
     fun startVoiceInput() {

@@ -333,11 +333,26 @@ fun ImportDataScreen(
     onBack: () -> Unit
 ) {
     val recentImports by viewModel.recentImports.collectAsState()
+    var showCamera by remember { mutableStateOf(false) }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { viewModel.importFromFile(it) }
+    }
+
+    // Show camera capture screen
+    if (showCamera) {
+        CameraCaptureScreen(
+            onImageCaptured = { ocrText ->
+                showCamera = false
+                viewModel.importFromCameraText(ocrText)
+            },
+            onDismiss = {
+                showCamera = false
+            }
+        )
+        return
     }
 
     Scaffold(
@@ -384,8 +399,8 @@ fun ImportDataScreen(
                 ImportMethodCard(
                     icon = Icons.Default.CameraAlt,
                     title = "Camera Scan",
-                    description = "Scan documents with camera",
-                    onClick = { viewModel.importFromCamera() }
+                    description = "Scan documents with camera & OCR",
+                    onClick = { showCamera = true }
                 )
             }
 

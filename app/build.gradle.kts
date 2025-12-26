@@ -131,6 +131,18 @@ dependencies {
     // JSON Serialization (for WebSocket payloads)
     implementation("com.google.code.gson:gson:2.10.1")
 
+    // CameraX for camera capture
+    implementation("androidx.camera:camera-core:1.3.1")
+    implementation("androidx.camera:camera-camera2:1.3.1")
+    implementation("androidx.camera:camera-lifecycle:1.3.1")
+    implementation("androidx.camera:camera-view:1.3.1")
+
+    // ML Kit for OCR text recognition
+    implementation("com.google.mlkit:text-recognition:16.0.0")
+
+    // Coil for image loading
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
     // Testing - Unit Tests
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test:1.9.22")
