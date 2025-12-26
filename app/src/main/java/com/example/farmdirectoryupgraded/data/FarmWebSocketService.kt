@@ -432,7 +432,7 @@ class FarmWebSocketService(private val backendUrl: String = "http://10.0.2.2:400
                 }
             }
 
-            on(Socket.EVENT_RECONNECT) { args ->
+            on("reconnect") { args ->
                 scope.launch {
                     val attemptNumber = if (args.isNotEmpty()) args[0] else 0
                     Log.d(TAG, "🔄 Reconnected after $attemptNumber attempts")
@@ -443,7 +443,7 @@ class FarmWebSocketService(private val backendUrl: String = "http://10.0.2.2:400
                 }
             }
 
-            on(Socket.EVENT_RECONNECT_ATTEMPT) { args ->
+            on("reconnect_attempt") { args ->
                 scope.launch {
                     val attemptNumber = if (args.isNotEmpty()) args[0] else 0
                     Log.d(TAG, "🔄 Reconnection attempt $attemptNumber")
@@ -451,14 +451,14 @@ class FarmWebSocketService(private val backendUrl: String = "http://10.0.2.2:400
                 }
             }
 
-            on(Socket.EVENT_RECONNECT_ERROR) { args ->
+            on("reconnect_error") { args ->
                 scope.launch {
                     val error = if (args.isNotEmpty()) args[0].toString() else "Unknown error"
                     Log.e(TAG, "Reconnection error: $error")
                 }
             }
 
-            on(Socket.EVENT_RECONNECT_FAILED) {
+            on("reconnect_failed") {
                 scope.launch {
                     Log.e(TAG, "❌ Reconnection failed after all attempts")
                     _connectionState.value = ConnectionState.ERROR
