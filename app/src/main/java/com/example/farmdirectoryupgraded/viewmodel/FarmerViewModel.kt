@@ -1208,12 +1208,13 @@ class FarmerViewModelFactory(
     private val context: Context,
     private val farmerDao: FarmerDao,
     private val attendanceDao: AttendanceDao,
+    private val employeeDao: EmployeeDao,
     private val logDao: LogDao
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(FarmerViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return FarmerViewModel(context, farmerDao, attendanceDao, logDao) as T
+            return FarmerViewModel(context, farmerDao, attendanceDao, employeeDao, logDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
