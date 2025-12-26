@@ -109,12 +109,12 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
 
     // Room Database
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    kapt("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:2.8.4")
+    implementation("androidx.room:room-ktx:2.8.4")
+    kapt("androidx.room:room-compiler:2.8.4")
 
     // Room Paging for large datasets
-    implementation("androidx.room:room-paging:2.6.1")
+    implementation("androidx.room:room-paging:2.8.4")
     implementation("androidx.paging:paging-runtime-ktx:3.2.1")
     implementation("androidx.paging:paging-compose:3.2.1")
 
@@ -138,7 +138,7 @@ dependencies {
     testImplementation("androidx.arch.core:core-testing:2.2.0")
     testImplementation("io.mockk:mockk:1.13.8")
     testImplementation("com.google.truth:truth:1.1.5")
-    testImplementation("androidx.room:room-testing:2.6.1")
+    testImplementation("androidx.room:room-testing:2.8.4")
 
     // Testing - Android Instrumented Tests
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
