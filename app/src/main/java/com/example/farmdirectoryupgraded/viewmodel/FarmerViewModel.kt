@@ -563,7 +563,6 @@ class FarmerViewModel(
      */
     fun importFromCameraText(ocrText: String) {
         viewModelScope.launch {
-            _isLoading.value = true
             try {
                 val count = parseOCRTextAndImport(ocrText)
                 _successMessage.value = "Imported $count farmer(s) from camera"
@@ -571,8 +570,6 @@ class FarmerViewModel(
             } catch (e: Exception) {
                 _errorMessage.value = "Camera import failed: ${e.message}"
                 addLog("Import", "ERROR", "Camera import failed", e.message ?: "Unknown error")
-            } finally {
-                _isLoading.value = false
             }
         }
     }
