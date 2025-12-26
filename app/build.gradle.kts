@@ -95,6 +95,8 @@ android {
     lint {
         // Ignore JaCoCo InvalidPackage errors (JaCoCo uses java.lang.management not available on Android)
         disable += "InvalidPackage"
+        // Ignore ChromeOS hardware feature warnings
+        disable += "PermissionImpliesUnsupportedChromeOsHardware"
         abortOnError = false
     }
 }
