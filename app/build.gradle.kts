@@ -148,6 +148,9 @@ dependencies {
     // ML Kit for OCR text recognition
     implementation("com.google.mlkit:text-recognition:16.0.0")
 
+    // ML Kit for barcode/QR code scanning
+    implementation("com.google.mlkit:barcode-scanning:17.1.0")
+
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.5.0")
 

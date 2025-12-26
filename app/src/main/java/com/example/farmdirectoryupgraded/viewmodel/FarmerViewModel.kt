@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.farmdirectoryupgraded.data.*
+import com.example.farmdirectoryupgraded.utils.QRCodeScanner
 import com.example.farmdirectoryupgraded.ui.ImportMethod
 import com.example.farmdirectoryupgraded.ui.ImportRecord
 import com.example.farmdirectoryupgraded.ui.AttendanceMethod
@@ -28,6 +29,7 @@ class FarmerViewModel(
     private val context: Context,
     private val farmerDao: FarmerDao,
     private val attendanceDao: AttendanceDao,
+    private val employeeDao: EmployeeDao,
     private val logDao: LogDao,
     private val webSocketService: FarmWebSocketService = FarmWebSocketService.getInstance()
 ) : ViewModel() {
@@ -35,6 +37,7 @@ class FarmerViewModel(
     private val TAG = "FarmerViewModel"
     private val gson = Gson()
     private val dateFormatter = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
+    private val qrCodeScanner = QRCodeScanner()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -148,6 +151,22 @@ class FarmerViewModel(
             initialValue = emptyList()
         )
 
+    // Employee management
+    val employees: StateFlow<List<Employee>> = employeeDao.getActiveEmployees()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    // Current selected employee for attendance
+    private val _selectedEmployee = MutableStateFlow<Employee?>(null)
+    val selectedEmployee: StateFlow<Employee?> = _selectedEmployee.asStateFlow()
+
+    fun selectEmployee(employee: Employee) {
+        _selectedEmployee.value = employee
+    }
+
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
     }
@@ -180,6 +199,57 @@ class FarmerViewModel(
         viewModelScope.launch {
             farmerDao.deleteFarmer(farmer)
             addLog("Farmer", "SUCCESS", "Deleted farmer: ${farmer.name}", "Farm: ${farmer.farmName}")
+        }
+    }
+
+    // ========================================================================
+    // EMPLOYEE MANAGEMENT
+    // ========================================================================
+
+    fun addEmployee(name: String, role: String, phone: String = "", email: String = "") {
+        viewModelScope.launch {
+            try {
+                val employee = Employee(
+                    name = name,
+                    role = role,
+                    phone = phone,
+                    email = email,
+                    isActive = true,
+                    hireDate = System.currentTimeMillis()
+                )
+                employeeDao.insertEmployee(employee)
+                addLog("Employee", "SUCCESS", "Added employee: $name", "Role: $role")
+                _successMessage.value = "Employee $name added successfully"
+            } catch (e: Exception) {
+                addLog("Employee", "ERROR", "Failed to add employee", e.message ?: "Unknown error")
+                _errorMessage.value = "Failed to add employee: ${e.message}"
+            }
+        }
+    }
+
+    fun updateEmployee(employee: Employee) {
+        viewModelScope.launch {
+            try {
+                employeeDao.updateEmployee(employee)
+                addLog("Employee", "SUCCESS", "Updated employee: ${employee.name}", "Role: ${employee.role}")
+                _successMessage.value = "Employee ${employee.name} updated"
+            } catch (e: Exception) {
+                addLog("Employee", "ERROR", "Failed to update employee", e.message ?: "Unknown error")
+                _errorMessage.value = "Failed to update employee: ${e.message}"
+            }
+        }
+    }
+
+    fun deactivateEmployee(employeeId: Int) {
+        viewModelScope.launch {
+            try {
+                employeeDao.deactivateEmployee(employeeId)
+                addLog("Employee", "SUCCESS", "Deactivated employee", "ID: $employeeId")
+                _successMessage.value = "Employee deactivated"
+            } catch (e: Exception) {
+                addLog("Employee", "ERROR", "Failed to deactivate employee", e.message ?: "Unknown error")
+                _errorMessage.value = "Failed to deactivate employee: ${e.message}"
+            }
         }
     }
 
@@ -760,17 +830,110 @@ class FarmerViewModel(
     // ATTENDANCE TRACKING
     // ========================================================================
 
-    fun recordAttendance(method: AttendanceMethod, farmName: String, notes: String) {
+    fun recordAttendance(method: AttendanceMethod, workLocation: String, notes: String) {
         viewModelScope.launch {
-            val record = AttendanceRecord(
-                farmName = farmName,
-                method = method.name,
-                checkInTime = System.currentTimeMillis(),
-                notes = notes,
-                workerId = "worker-${System.currentTimeMillis()}"
-            )
-            attendanceDao.insertAttendance(record)
-            addLog("Attendance", "SUCCESS", "Check-in recorded", "Farm: $farmName, Method: ${method.displayName}")
+            try {
+                val employee = _selectedEmployee.value
+                if (employee == null) {
+                    addLog("Attendance", "ERROR", "No employee selected", "Please select an employee first")
+                    _errorMessage.value = "Please select an employee before checking in"
+                    return@launch
+                }
+
+                val record = AttendanceRecord(
+                    employeeId = employee.id,
+                    employeeName = employee.name,
+                    employeeRole = employee.role,
+                    method = method.name,
+                    checkInTime = System.currentTimeMillis(),
+                    notes = notes,
+                    workLocation = workLocation
+                )
+                attendanceDao.insertAttendance(record)
+                addLog("Attendance", "SUCCESS", "Check-in recorded",
+                    "Employee: ${employee.name}, Work Location: $workLocation, Method: ${method.name}")
+                _successMessage.value = "${employee.name} checked in at $workLocation"
+            } catch (e: Exception) {
+                addLog("Attendance", "ERROR", "Check-in failed", e.message ?: "Unknown error")
+                _errorMessage.value = "Check-in failed: ${e.message}"
+            }
+        }
+    }
+
+    fun checkInWithQRCode(qrData: String, workLocation: String = "") {
+        viewModelScope.launch {
+            try {
+                // Parse QR code data
+                val qrData = qrCodeScanner.parseAttendanceFromQR(qrData)
+                if (qrData == null) {
+                    addLog("Attendance", "ERROR", "Invalid QR code format", "Could not parse attendance data")
+                    _errorMessage.value = "Invalid QR code format. Expected format: EMP:123|FARM:Farm Name|TASK:Task Description"
+                    return@launch
+                }
+
+                // Get employee from database
+                val employee = employeeDao.getEmployeeById(qrData.employeeId)
+                if (employee == null) {
+                    addLog("Attendance", "ERROR", "Employee not found", "Employee ID: ${qrData.employeeId}")
+                    _errorMessage.value = "Employee ID ${qrData.employeeId} not found in system"
+                    return@launch
+                }
+
+                // Create attendance record
+                val location = if (workLocation.isNotEmpty()) workLocation else (qrData.workLocation ?: "Unknown Location")
+                val record = AttendanceRecord(
+                    employeeId = employee.id,
+                    employeeName = employee.name,
+                    employeeRole = employee.role,
+                    method = "QR_CODE",
+                    checkInTime = System.currentTimeMillis(),
+                    notes = "QR Code: ${qrData.taskDescription ?: ""}",
+                    workLocation = location
+                )
+                attendanceDao.insertAttendance(record)
+                addLog("Attendance", "SUCCESS", "QR Code check-in recorded",
+                    "Employee: ${employee.name}, Work Location: $location")
+                _successMessage.value = "✓ ${employee.name} checked in via QR Code at $location"
+            } catch (e: Exception) {
+                addLog("Attendance", "ERROR", "QR code check-in failed", e.message ?: "Unknown error")
+                _errorMessage.value = "QR code check-in failed: ${e.message}"
+            }
+        }
+    }
+
+    fun checkOutAttendance() {
+        viewModelScope.launch {
+            try {
+                val employee = _selectedEmployee.value
+                if (employee == null) {
+                    addLog("Attendance", "ERROR", "No employee selected", "Please select an employee first")
+                    _errorMessage.value = "Please select an employee before checking out"
+                    return@launch
+                }
+
+                val record = attendanceDao.getActiveCheckInForEmployee(employee.id)
+                if (record != null) {
+                    val checkOutTime = System.currentTimeMillis()
+                    val hoursWorked = (checkOutTime - record.checkInTime) / (1000.0 * 60 * 60)
+
+                    attendanceDao.checkOut(
+                        id = record.id,
+                        checkOutTime = checkOutTime,
+                        hoursWorked = hoursWorked,
+                        latitude = null,
+                        longitude = null
+                    )
+                    addLog("Attendance", "SUCCESS", "Check-out recorded",
+                        "Employee: ${record.employeeName}, Hours: ${String.format("%.2f", hoursWorked)}")
+                    _successMessage.value = "${record.employeeName} checked out (${String.format("%.2f", hoursWorked)} hours)"
+                } else {
+                    addLog("Attendance", "WARNING", "No active check-in found", "Employee: ${employee.name}")
+                    _errorMessage.value = "${employee.name} has no active check-in to close"
+                }
+            } catch (e: Exception) {
+                addLog("Attendance", "ERROR", "Check-out failed", e.message ?: "Unknown error")
+                _errorMessage.value = "Check-out failed: ${e.message}"
+            }
         }
     }
 
@@ -779,12 +942,45 @@ class FarmerViewModel(
     // ========================================================================
 
     fun getCurrentLocation(callback: (Double, Double) -> Unit) {
-        // Placeholder - in real app, use FusedLocationProviderClient
-        // For now, return a sample location
         viewModelScope.launch {
-            addLog("Reconcile", "INFO", "GPS location requested", "")
+            try {
+                // Try to get location from webSocketService (real-time updates)
+                val lastLocation = _recentLocationUpdate.value
+                if (lastLocation != null && lastLocation.location.latitude != 0.0 && lastLocation.location.longitude != 0.0) {
+                    callback(lastLocation.location.latitude, lastLocation.location.longitude)
+                    addLog("Reconcile", "SUCCESS", "GPS location retrieved from device",
+                        "Lat: ${String.format("%.4f", lastLocation.location.latitude)}, Lon: ${String.format("%.4f", lastLocation.location.longitude)}")
+                } else {
+                    // Fallback to default location if no real location data available
+                    addLog("Reconcile", "WARNING", "No active GPS location available, using fallback", "")
+                    callback(35.7796, -81.3361) // Hiddenite, NC area as fallback
+                }
+            } catch (e: Exception) {
+                addLog("Reconcile", "ERROR", "Failed to get GPS location", e.message ?: "Unknown error")
+                callback(35.7796, -81.3361) // Fallback on error
+            }
         }
-        callback(35.7796, -81.3361) // Sample: Hiddenite, NC area
+    }
+
+    /**
+     * Update employee's current GPS location
+     * This should be called periodically when location updates are available
+     */
+    fun updateEmployeeLocation(employeeId: Int, latitude: Double, longitude: Double) {
+        viewModelScope.launch {
+            try {
+                val employee = employeeDao.getEmployeeById(employeeId)
+                if (employee != null) {
+                    Log.d(TAG, "Location update for employee ${employee.name}: $latitude, $longitude")
+                    addLog("Location", "INFO", "Updated location for ${employee.name}",
+                        "Lat: ${String.format("%.4f", latitude)}, Lon: ${String.format("%.4f", longitude)}")
+                } else {
+                    Log.w(TAG, "Employee $employeeId not found for location update")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating employee location", e)
+            }
+        }
     }
 
     fun reconcileFarm(latitude: Double, longitude: Double, callback: (ReconcileResult) -> Unit) {
@@ -874,12 +1070,21 @@ class FarmerViewModel(
                     return@launch
                 }
 
-                // Nearest Neighbor Algorithm
+                // Improved Nearest Neighbor Algorithm with better starting point
                 val route = mutableListOf<Farmer>()
                 val remaining = farmersWithLocation.toMutableList()
 
-                // Start with the first farm
-                var current = remaining.removeAt(0)
+                // Find geographically central farm as starting point (better optimization)
+                val centroid = findCentroid(farmersWithLocation)
+                val startFarm = remaining.minByOrNull { farm ->
+                    calculateHaversineDistance(
+                        centroid.first, centroid.second,
+                        farm.latitude!!, farm.longitude!!
+                    )
+                } ?: remaining[0]
+
+                var current = startFarm
+                remaining.remove(startFarm)
                 route.add(current)
 
                 // Find nearest neighbor iteratively
@@ -896,7 +1101,7 @@ class FarmerViewModel(
                     current = nearest
                 }
 
-                // Calculate route details
+                // Calculate route details with improved time estimation
                 var totalDistance = 0.0
                 val stops = mutableListOf<RouteStop>()
 
@@ -914,17 +1119,33 @@ class FarmerViewModel(
 
                     totalDistance += distanceFromPrev
 
+                    // Better time estimation: account for city/rural speeds
+                    val estimatedMinutes = if (index == 0) {
+                        0
+                    } else {
+                        // Estimate: rural = 40 km/h, city = 20 km/h, average = 30 km/h
+                        ((distanceFromPrev / 30.0) * 60).toInt()
+                    }
+
                     stops.add(
                         RouteStop(
                             farmName = farmer.farmName.ifBlank { farmer.name },
-                            distanceFromPrevious = if (index == 0) "Start" else String.format("%.1f", distanceFromPrev),
-                            timeFromPrevious = if (index == 0) "-" else "${(distanceFromPrev * 1.5).toInt()} min"
+                            distanceFromPrevious = if (index == 0) "Start" else String.format("%.1f km", distanceFromPrev),
+                            timeFromPrevious = if (index == 0) "-" else "$estimatedMinutes min"
                         )
                     )
                 }
 
-                val estimatedTime = "${(totalDistance * 1.5).toInt()} minutes"
-                val fuelCost = totalDistance * 0.15 // Assume $0.15 per km
+                // More realistic time calculation (in minutes)
+                val estimatedTotalMinutes = (totalDistance / 30.0 * 60).toInt()
+                val estimatedTime = if (estimatedTotalMinutes > 60) {
+                    "${estimatedTotalMinutes / 60}h ${estimatedTotalMinutes % 60}m"
+                } else {
+                    "$estimatedTotalMinutes minutes"
+                }
+
+                // Fuel cost estimation: assume 8 L/100km consumption, $1.50/L
+                val fuelCost = (totalDistance / 100.0) * 8.0 * 1.50
 
                 val optimizedRoute = OptimizedRoute(
                     stops = stops,
@@ -934,13 +1155,19 @@ class FarmerViewModel(
                 )
 
                 addLog("Route", "SUCCESS", "Optimized route for ${selectedFarmers.size} farms",
-                    "Total distance: ${String.format("%.1f", totalDistance)} km")
+                    "Total distance: ${String.format("%.1f", totalDistance)} km, Time: $estimatedTime")
 
                 callback(optimizedRoute)
             } catch (e: Exception) {
                 addLog("Route", "ERROR", "Route optimization failed", e.message ?: "")
             }
         }
+    }
+
+    private fun findCentroid(farmers: List<Farmer>): Pair<Double, Double> {
+        val avgLat = farmers.mapNotNull { it.latitude }.average()
+        val avgLon = farmers.mapNotNull { it.longitude }.average()
+        return Pair(avgLat, avgLon)
     }
 
     // ========================================================================
