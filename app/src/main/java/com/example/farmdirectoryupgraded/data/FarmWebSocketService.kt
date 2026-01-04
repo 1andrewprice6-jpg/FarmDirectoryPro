@@ -1,330 +1,339 @@
 package com.example.farmdirectoryupgraded.data
 
 import android.util.Log
-import com.google.gson.Gson
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.GlobalScope
+import io.socket.client.IO
+import io.socket.client.Socket
+import io.socket.emitter.Emitter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
-import okhttp3.*
-import okio.ByteString
-import java.util.concurrent.TimeUnit
+import org.json.JSONObject
+import kotlin.math.min
 
-class FarmWebSocketService {
+/**
+ * WebSocket Service for real-time farm data communication
+ * Implements automatic reconnection with exponential backoff
+ */
+class FarmWebSocketService(private val baseUrl: String = "https://api.farmdirectory.com") {
 
     companion object {
-        private const val TAG = "FarmWebSocket"
-
-        // CHANGE THIS to your actual backend URL
-        // Examples:
-        // - Local development: ws://192.168.1.100:8080
-        // - Production: wss://api.yourfarm.com
-        // - Docker local: ws://host.docker.internal:8080
-        private const val BASE_URL = "ws://YOUR_BACKEND_IP:PORT"
-
-        // Connection timeouts
-        private const val CONNECT_TIMEOUT = 10L
-        private const val READ_TIMEOUT = 30L
-        private const val WRITE_TIMEOUT = 30L
-
-        // Reconnection settings
-        private const val MAX_RECONNECT_ATTEMPTS = 5
-        private const val RECONNECT_DELAY_MS = 3000L
+        private const val TAG = "FarmWebSocketService"
+        private const val INITIAL_RECONNECT_DELAY_MS = 1000L  // 1 second
+        private const val MAX_RECONNECT_DELAY_MS = 60000L     // 1 minute
+        private const val MAX_RECONNECTION_ATTEMPTS = 10
     }
 
-    private val gson = Gson()
-    private var webSocket: WebSocket? = null
-    private var reconnectAttempts = 0
-    private var isManualDisconnect = false
-
-    // Store connection parameters for reconnection
-    private var currentFarmId: String? = null
-    private var currentWorkerId: String? = null
-
-    // State flows
-    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
-    val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
-
-    private val _messageChannel = Channel<String>(Channel.UNLIMITED)
-    val messageChannel: Channel<String> = _messageChannel
-
-    private val _errorChannel = Channel<WebSocketError>(Channel.UNLIMITED)
-    val errorChannel: Channel<WebSocketError> = _errorChannel
-
-    private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(CONNECT_TIMEOUT, TimeUnit.SECONDS)
-        .readTimeout(READ_TIMEOUT, TimeUnit.SECONDS)
-        .writeTimeout(WRITE_TIMEOUT, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(true)
-        .build()
-
-    private val webSocketListener = object : WebSocketListener() {
-        override fun onOpen(webSocket: WebSocket, response: Response) {
-            Log.d(TAG, "WebSocket connection opened")
-            _connectionState.value = ConnectionState.Connected
-            reconnectAttempts = 0
-        }
-
-        override fun onMessage(webSocket: WebSocket, text: String) {
-            Log.d(TAG, "Message received: $text")
-            _messageChannel.trySend(text)
-            handleMessage(text)
-        }
-
-        override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-            Log.d(TAG, "Binary message received: ${bytes.hex()}")
-            _messageChannel.trySend(bytes.utf8())
-            handleMessage(bytes.utf8())
-        }
-
-        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-            Log.d(TAG, "WebSocket closing: $code - $reason")
-            _connectionState.value = ConnectionState.Disconnecting
-        }
-
-        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-            Log.d(TAG, "WebSocket closed: $code - $reason")
-            _connectionState.value = ConnectionState.Disconnected
-
-            // Attempt reconnection if not manually disconnected
-            if (!isManualDisconnect && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                attemptReconnect()
-            }
-        }
-
-        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            Log.e(TAG, "WebSocket failure", t)
-            val error = WebSocketError(
-                message = t.message ?: "Unknown error",
-                code = response?.code ?: -1,
-                timestamp = System.currentTimeMillis()
-            )
-            _errorChannel.trySend(error)
-            _connectionState.value = ConnectionState.Error(error)
-
-            // Attempt reconnection
-            if (!isManualDisconnect && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                attemptReconnect()
-            }
-        }
+    enum class ConnectionState {
+        DISCONNECTED, CONNECTING, CONNECTED, RECONNECTING, ERROR
     }
 
+    // State management
+    private var socket: Socket? = null
+    private val _connectionState = MutableSharedFlow<ConnectionState>()
+    val connectionState = _connectionState.asSharedFlow()
+
+    private val _events = MutableSharedFlow<WebSocketEvent>()
+    val events = _events.asSharedFlow()
+
+    private val _errors = MutableSharedFlow<String>()
+    val errors = _errors.asSharedFlow()
+
+    // Reconnection state
+    private var reconnectionAttempts = 0
+    private var currentReconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
+    private var isManuallyDisconnected = false
+    private var farmId: String = ""
+    private var workerId: String = ""
+
+    private val coroutineScope = CoroutineScope(Dispatchers.IO)
+
+    /**
+     * Connect to WebSocket server
+     *
+     * @param farmId The farm identifier
+     * @param workerId The worker identifier
+     */
     fun connect(farmId: String, workerId: String) {
-        if (_connectionState.value is ConnectionState.Connected) {
-            Log.d(TAG, "Already connected")
+        if (socket?.isConnected == true) {
+            Log.w(TAG, "Already connected to WebSocket")
             return
         }
 
-        // Store parameters for reconnection
-        currentFarmId = farmId
-        currentWorkerId = workerId
+        this.farmId = farmId
+        this.workerId = workerId
+        isManuallyDisconnected = false
+        reconnectionAttempts = 0
+        currentReconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
 
-        isManualDisconnect = false
-        _connectionState.value = ConnectionState.Connecting
-
-        val url = "$BASE_URL/farm/$farmId/worker/$workerId"
-        Log.d(TAG, "Connecting to: $url")
-
-        val request = Request.Builder()
-            .url(url)
-            .build()
+        coroutineScope.launch {
+            _connectionState.emit(ConnectionState.CONNECTING)
+        }
 
         try {
-            webSocket = okHttpClient.newWebSocket(request, webSocketListener)
+            val options = IO.Options.builder()
+                .setReconnection(false)  // Handle reconnection manually
+                .setReconnectionDelay(1000)
+                .setReconnectionDelayMax(5000)
+                .setRandomizationFactor(0.5)
+                .build()
+
+            socket = IO.socket(baseUrl, options)
+            setupSocketListeners()
+            socket?.connect()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to create WebSocket", e)
-            val error = WebSocketError(
-                message = "Connection failed: ${e.message}",
-                code = -1,
-                timestamp = System.currentTimeMillis()
-            )
-            _errorChannel.trySend(error)
-            _connectionState.value = ConnectionState.Error(error)
-        }
-    }
-
-    private fun attemptReconnect() {
-        reconnectAttempts++
-        Log.d(TAG, "Attempting reconnection $reconnectAttempts/$MAX_RECONNECT_ATTEMPTS")
-
-        _connectionState.value = ConnectionState.Reconnecting(reconnectAttempts)
-
-        // Use coroutine instead of Thread.sleep (non-blocking)
-        GlobalScope.launch {
-            delay(RECONNECT_DELAY_MS)
-
-            // Reconnect using stored parameters
-            if (currentFarmId != null && currentWorkerId != null && !isManualDisconnect) {
-                connect(currentFarmId!!, currentWorkerId!!)
+            Log.e(TAG, "Failed to create WebSocket: ${e.message}", e)
+            coroutineScope.launch {
+                _errors.emit("Failed to connect: ${e.message}")
+                _connectionState.emit(ConnectionState.ERROR)
             }
+            scheduleReconnection()
         }
     }
 
+    /**
+     * Disconnect from WebSocket server
+     */
     fun disconnect() {
-        Log.d(TAG, "Manually disconnecting")
-        isManualDisconnect = true
-        webSocket?.close(1000, "User disconnected")
-        webSocket = null
-        currentFarmId = null
-        currentWorkerId = null
-        _connectionState.value = ConnectionState.Disconnected
-    }
-
-    fun sendMessage(message: Any): Boolean {
-        val currentState = _connectionState.value
-        if (currentState !is ConnectionState.Connected) {
-            Log.w(TAG, "Cannot send message - not connected. State: $currentState")
-            return false
-        }
-
-        return try {
-            val json = gson.toJson(message)
-            Log.d(TAG, "Sending message: $json")
-            webSocket?.send(json) ?: false
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to send message", e)
-            false
+        isManuallyDisconnected = true
+        socket?.disconnect()
+        socket = null
+        coroutineScope.launch {
+            _connectionState.emit(ConnectionState.DISCONNECTED)
         }
     }
 
-    fun sendLocationUpdate(latitude: Double, longitude: Double, workerId: String): Boolean {
-        val update = LocationUpdateDto(
-            workerId = workerId,
-            latitude = latitude,
-            longitude = longitude,
-            timestamp = System.currentTimeMillis()
-        )
-        return sendMessage(update)
+    /**
+     * Retry connection with exponential backoff
+     */
+    fun retryConnection() {
+        if (isManuallyDisconnected) {
+            Log.d(TAG, "Manual disconnection active, not retrying")
+            return
+        }
+
+        if (reconnectionAttempts >= MAX_RECONNECTION_ATTEMPTS) {
+            Log.e(TAG, "Max reconnection attempts reached ($MAX_RECONNECTION_ATTEMPTS)")
+            coroutineScope.launch {
+                _errors.emit("Failed to reconnect after $MAX_RECONNECTION_ATTEMPTS attempts")
+                _connectionState.emit(ConnectionState.ERROR)
+            }
+            return
+        }
+
+        scheduleReconnection()
     }
 
-    fun sendHealthUpdate(status: HealthStatus, notes: String?, workerId: String): Boolean {
-        val update = HealthUpdateDto(
-            workerId = workerId,
-            status = status,
-            notes = notes,
-            timestamp = System.currentTimeMillis()
-        )
-        return sendMessage(update)
+    /**
+     * Schedule reconnection with exponential backoff
+     */
+    private fun scheduleReconnection() {
+        reconnectionAttempts++
+        val nextDelay = calculateBackoffDelay(reconnectionAttempts)
+
+        Log.d(TAG, "Scheduling reconnection attempt #$reconnectionAttempts in ${nextDelay}ms")
+
+        coroutineScope.launch {
+            _connectionState.emit(ConnectionState.RECONNECTING)
+            kotlinx.coroutines.delay(nextDelay)
+            connect(farmId, workerId)
+        }
     }
 
-    fun joinFarm(farmId: String, workerName: String): Boolean {
-        val joinRequest = JoinFarmDto(
-            farmId = farmId,
-            workerName = workerName,
-            timestamp = System.currentTimeMillis()
-        )
-        return sendMessage(joinRequest)
+    /**
+     * Calculate exponential backoff delay
+     *
+     * @param attemptNumber The current attempt number (1-based)
+     * @return Delay in milliseconds
+     */
+    private fun calculateBackoffDelay(attemptNumber: Int): Long {
+        // Exponential backoff: (initial * 2^(attempt-1)) capped at max
+        val exponentialDelay = INITIAL_RECONNECT_DELAY_MS * (1L shl (attemptNumber - 1))
+        return min(exponentialDelay, MAX_RECONNECT_DELAY_MS)
     }
 
-    fun reconcile(farmId: String): Boolean {
-        val reconcileRequest = ReconcileRequestDto(
-            type = "reconcile",
-            farmId = farmId,
-            timestamp = System.currentTimeMillis()
-        )
-        return sendMessage(reconcileRequest)
-    }
+    /**
+     * Setup WebSocket event listeners
+     */
+    private fun setupSocketListeners() {
+        socket?.on(Socket.EVENT_CONNECT) {
+            Log.d(TAG, "WebSocket connected")
+            reconnectionAttempts = 0
+            currentReconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
+            coroutineScope.launch {
+                _connectionState.emit(ConnectionState.CONNECTED)
+            }
+            joinFarm()
+        }
 
-    fun optimize(farmId: String): Boolean {
-        val optimizeRequest = OptimizeRequestDto(
-            type = "optimize",
-            farmId = farmId,
-            timestamp = System.currentTimeMillis()
-        )
-        return sendMessage(optimizeRequest)
-    }
-
-    private fun handleMessage(text: String) {
-        try {
-            // Parse the message to determine type
-            val messageObj = gson.fromJson(text, Map::class.java)
-            val type = messageObj["type"] as? String
-
-            Log.d(TAG, "Handling message of type: $type")
-
-            when (type) {
-                "reconcile_result" -> {
-                    Log.d(TAG, "Reconcile result received: $text")
-                    // Process reconciliation results
-                    // Your app logic here
+        socket?.on(Socket.EVENT_DISCONNECT) {
+            Log.d(TAG, "WebSocket disconnected")
+            if (!isManuallyDisconnected) {
+                coroutineScope.launch {
+                    _connectionState.emit(ConnectionState.RECONNECTING)
                 }
-                "optimize_result" -> {
-                    Log.d(TAG, "Optimize result received: $text")
-                    // Process optimization results
-                    // Your app logic here
-                }
-                "location_update" -> {
-                    Log.d(TAG, "Location update received: $text")
-                }
-                "worker_joined" -> {
-                    Log.d(TAG, "Worker joined: $text")
-                }
-                else -> {
-                    Log.d(TAG, "Unknown message type: $type")
+                retryConnection()
+            } else {
+                coroutineScope.launch {
+                    _connectionState.emit(ConnectionState.DISCONNECTED)
                 }
             }
+        }
+
+        socket?.on(Socket.EVENT_CONNECT_ERROR) { args ->
+            val error = (args.firstOrNull() as? Exception)?.message ?: "Unknown connection error"
+            Log.e(TAG, "WebSocket connection error: $error")
+            coroutineScope.launch {
+                _errors.emit("Connection error: $error")
+                _connectionState.emit(ConnectionState.ERROR)
+            }
+            if (!isManuallyDisconnected) {
+                retryConnection()
+            }
+        }
+
+        socket?.on("location_broadcast") { args ->
+            handleLocationBroadcast(args)
+        }
+
+        socket?.on("health_alert") { args ->
+            handleHealthAlert(args)
+        }
+
+        socket?.on("worker_joined") { args ->
+            handleWorkerJoined(args)
+        }
+
+        socket?.on("worker_left") { args ->
+            handleWorkerLeft(args)
+        }
+
+        socket?.on("critical_alert") { args ->
+            handleCriticalAlert(args)
+        }
+    }
+
+    /**
+     * Send message to server
+     *
+     * @param eventName The event name
+     * @param data The data to send
+     */
+    fun sendMessage(eventName: String, data: JSONObject) {
+        if (socket?.isConnected != true) {
+            Log.w(TAG, "Socket not connected, cannot send message: $eventName")
+            coroutineScope.launch {
+                _errors.emit("Cannot send message: not connected")
+            }
+            return
+        }
+
+        try {
+            socket?.emit(eventName, data)
+            Log.d(TAG, "Sent event: $eventName")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to handle message", e)
+            Log.e(TAG, "Failed to send message: ${e.message}", e)
+            coroutineScope.launch {
+                _errors.emit("Failed to send message: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Send location update to server
+     */
+    fun sendLocationUpdate(latitude: Double, longitude: Double, timestamp: Long = System.currentTimeMillis()) {
+        val data = JSONObject().apply {
+            put("farmId", farmId)
+            put("workerId", workerId)
+            put("latitude", latitude)
+            put("longitude", longitude)
+            put("timestamp", timestamp)
+        }
+        sendMessage("location_update", data)
+    }
+
+    /**
+     * Send health update to server
+     */
+    fun sendHealthUpdate(status: String, notes: String = "") {
+        val data = JSONObject().apply {
+            put("farmId", farmId)
+            put("workerId", workerId)
+            put("status", status)
+            put("notes", notes)
+            put("timestamp", System.currentTimeMillis())
+        }
+        sendMessage("health_update", data)
+    }
+
+    /**
+     * Join farm for real-time monitoring
+     */
+    fun joinFarm() {
+        val data = JSONObject().apply {
+            put("farmId", farmId)
+            put("workerId", workerId)
+        }
+        sendMessage("join_farm", data)
+    }
+
+    /**
+     * Leave farm monitoring
+     */
+    fun leaveFarm() {
+        val data = JSONObject().apply {
+            put("farmId", farmId)
+            put("workerId", workerId)
+        }
+        sendMessage("leave_farm", data)
+    }
+
+    // Event handlers
+    private fun handleLocationBroadcast(args: Array<Any>) {
+        Log.d(TAG, "Location broadcast received")
+        coroutineScope.launch {
+            _events.emit(WebSocketEvent.LocationBroadcast(args.firstOrNull().toString()))
+        }
+    }
+
+    private fun handleHealthAlert(args: Array<Any>) {
+        Log.d(TAG, "Health alert received")
+        coroutineScope.launch {
+            _events.emit(WebSocketEvent.HealthAlert(args.firstOrNull().toString()))
+        }
+    }
+
+    private fun handleWorkerJoined(args: Array<Any>) {
+        Log.d(TAG, "Worker joined event")
+        coroutineScope.launch {
+            _events.emit(WebSocketEvent.WorkerJoined(args.firstOrNull().toString()))
+        }
+    }
+
+    private fun handleWorkerLeft(args: Array<Any>) {
+        Log.d(TAG, "Worker left event")
+        coroutineScope.launch {
+            _events.emit(WebSocketEvent.WorkerLeft(args.firstOrNull().toString()))
+        }
+    }
+
+    private fun handleCriticalAlert(args: Array<Any>) {
+        Log.e(TAG, "Critical alert received")
+        coroutineScope.launch {
+            _events.emit(WebSocketEvent.CriticalAlert(args.firstOrNull().toString()))
         }
     }
 }
 
-// Connection states
-sealed class ConnectionState {
-    object Disconnected : ConnectionState()
-    object Connecting : ConnectionState()
-    object Connected : ConnectionState()
-    object Disconnecting : ConnectionState()
-    data class Reconnecting(val attempt: Int) : ConnectionState()
-    data class Error(val error: WebSocketError) : ConnectionState()
-}
-
-// Error model
-data class WebSocketError(
-    val message: String,
-    val code: Int,
-    val timestamp: Long
-)
-
-// DTO models
-data class LocationUpdateDto(
-    val workerId: String,
-    val latitude: Double,
-    val longitude: Double,
-    val timestamp: Long
-)
-
-data class HealthUpdateDto(
-    val workerId: String,
-    val status: HealthStatus,
-    val notes: String?,
-    val timestamp: Long
-)
-
-data class JoinFarmDto(
-    val farmId: String,
-    val workerName: String,
-    val timestamp: Long
-)
-
-data class ReconcileRequestDto(
-    val type: String,
-    val farmId: String,
-    val timestamp: Long
-)
-
-data class OptimizeRequestDto(
-    val type: String,
-    val farmId: String,
-    val timestamp: Long
-)
-
-enum class HealthStatus {
-    HEALTHY,
-    SICK,
-    INJURED,
-    QUARANTINE
+/**
+ * WebSocket events
+ */
+sealed class WebSocketEvent {
+    data class LocationBroadcast(val data: String) : WebSocketEvent()
+    data class HealthAlert(val data: String) : WebSocketEvent()
+    data class WorkerJoined(val data: String) : WebSocketEvent()
+    data class WorkerLeft(val data: String) : WebSocketEvent()
+    data class CriticalAlert(val data: String) : WebSocketEvent()
 }
