@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Default configuration for all domains -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">192.168.0.0/16</domain>
+        <domain includeSubdomains="true">10.0.0.0/8</domain>
+    </domain-config>
+
+    <!-- Production domain configuration (update with your actual domain) -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api.yourfarm.com</domain>
+        <!-- Optional: Add certificate pinning for production -->
+        <!--
+        <pin-set expiration="2026-01-01">
+            <pin digest="SHA-256">YOUR_CERTIFICATE_PIN_HERE</pin>
+        </pin-set>
+        -->
+    </domain-config>
+
+    <!-- Disable cleartext traffic by default (secure) -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">.</domain>
+    </domain-config>
+</network-security-config>
