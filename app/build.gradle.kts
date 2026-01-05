@@ -159,7 +159,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test:1.9.22")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     testImplementation("androidx.arch.core:core-testing:2.2.0")
-    testImplementation("io.mockk:mockk:1.13.8")
+    testImplementation("io.mockk:mockk:1.14.7")
     testImplementation("com.google.truth:truth:1.1.5")
     testImplementation("androidx.room:room-testing:2.6.1")
 
@@ -171,7 +171,7 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.5.2")
     androidTestImplementation("androidx.test:rules:1.5.0")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.5.4")
-    androidTestImplementation("io.mockk:mockk-android:1.13.8")
+    androidTestImplementation("io.mockk:mockk-android:1.14.7")
 
     // Debug Tools
     debugImplementation("androidx.compose.ui:ui-tooling")
