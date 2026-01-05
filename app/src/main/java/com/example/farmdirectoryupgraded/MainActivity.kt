@@ -24,8 +24,12 @@ import com.example.farmdirectoryupgraded.data.Farmer
 import com.example.farmdirectoryupgraded.data.FarmDatabase
 import com.example.farmdirectoryupgraded.ui.*
 import com.example.farmdirectoryupgraded.ui.theme.FarmDirectoryTheme
-import com.example.farmdirectoryupgraded.viewmodel.FarmerViewModel
-import com.example.farmdirectoryupgraded.viewmodel.FarmerViewModelFactory
+import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
+import com.example.farmdirectoryupgraded.viewmodel.AttendanceViewModel
+import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
+import com.example.farmdirectoryupgraded.viewmodel.WebSocketViewModel
+import com.example.farmdirectoryupgraded.viewmodel.FarmViewModelFactory
+import com.example.farmdirectoryupgraded.data.FarmWebSocketService
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,74 +51,83 @@ class MainActivity : ComponentActivity() {
 fun FarmDirectoryApp() {
     val context = LocalContext.current
     val database = remember { FarmDatabase.getDatabase(context) }
-    val viewModel: FarmerViewModel = viewModel(
-        factory = FarmerViewModelFactory(
-            context = context,
+
+    // Create factory with all required DAOs
+    val viewModelFactory = remember {
+        FarmViewModelFactory(
             farmerDao = database.farmerDao(),
             attendanceDao = database.attendanceDao(),
-            logDao = database.logDao()
+            employeeDao = database.employeeDao(),
+            webSocketService = FarmWebSocketService()
         )
-    )
+    }
+
+    // Create each specialized ViewModel
+    val farmerListViewModel: FarmerListViewModel = viewModel(factory = viewModelFactory)
+    val attendanceViewModel: AttendanceViewModel = viewModel(factory = viewModelFactory)
+    val locationViewModel: LocationViewModel = viewModel(factory = viewModelFactory)
+    val webSocketViewModel: WebSocketViewModel = viewModel(factory = viewModelFactory)
 
     var currentScreen by remember { mutableStateOf("list") }
     var selectedFarmer by remember { mutableStateOf<Farmer?>(null) }
     val appSettings = remember { AppSettings(context) }
 
-    // WebSocket state management
-    val connectionState by viewModel.connectionState.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
-    val successMessage by viewModel.successMessage.collectAsState()
+    // WebSocket state (from WebSocketViewModel)
+    val connectionState by webSocketViewModel.connectionState.collectAsState()
+    val errorMessage by webSocketViewModel.errorMessage.collectAsState()
+
+    // Farmer list state (from FarmerListViewModel)
+    val farmers by farmerListViewModel.farmers.collectAsState(initial = emptyList())
+    val farmerError by farmerListViewModel.errorMessage.collectAsState()
+    val farmerSuccess by farmerListViewModel.successMessage.collectAsState()
+
     var showErrorDialog by remember { mutableStateOf(false) }
     var showSuccessSnackbar by remember { mutableStateOf(false) }
 
     // Connect to WebSocket backend on app start
     LaunchedEffect(appSettings.backendUrl) {
         if (appSettings.autoConnect) {
-            viewModel.connectToBackend()
-            // Wait a bit for connection to establish
-            kotlinx.coroutines.delay(1000)
-            viewModel.joinFarm(
+            webSocketViewModel.connectToBackend(
                 farmId = appSettings.farmId,
-                workerId = "worker-${System.currentTimeMillis()}",
-                workerName = appSettings.workerName
+                workerId = "worker-${System.currentTimeMillis()}"
             )
         }
     }
 
     // Show error dialog when error occurs
-    LaunchedEffect(errorMessage) {
-        if (errorMessage != null) {
+    LaunchedEffect(errorMessage, farmerError) {
+        if (errorMessage != null || farmerError != null) {
             showErrorDialog = true
         }
     }
 
     // Show success snackbar when success message occurs
-    LaunchedEffect(successMessage) {
-        if (successMessage != null) {
+    LaunchedEffect(farmerSuccess) {
+        if (farmerSuccess != null) {
             showSuccessSnackbar = true
-            kotlinx.coroutines.delay(3000) // Auto-dismiss after 3 seconds
-            viewModel.clearSuccessMessage()
+            kotlinx.coroutines.delay(3000)
+            farmerListViewModel.clearSuccessMessage()
             showSuccessSnackbar = false
         }
     }
 
     // Error Dialog
-    if (showErrorDialog && errorMessage != null) {
+    if (showErrorDialog && (errorMessage != null || farmerError != null)) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = {
                 showErrorDialog = false
-                viewModel.clearErrorMessage()
+                webSocketViewModel.clearError()
+                farmerListViewModel.clearError()
             },
             icon = {
                 Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
             },
             title = {
-                Text("Connection Error")
+                Text("Error")
             },
             text = {
                 Column {
-                    Text(errorMessage!!)
+                    Text(errorMessage ?: farmerError ?: "Unknown error")
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Connection state: ${connectionState.name}",
@@ -127,8 +140,11 @@ fun FarmDirectoryApp() {
                 Button(
                     onClick = {
                         showErrorDialog = false
-                        viewModel.clearErrorMessage()
-                        viewModel.retryConnection()
+                        webSocketViewModel.clearError()
+                        farmerListViewModel.clearError()
+                        if (errorMessage != null) {
+                            webSocketViewModel.reconnect()
+                        }
                     }
                 ) {
                     Icon(Icons.Default.Refresh, contentDescription = null)
@@ -140,7 +156,8 @@ fun FarmDirectoryApp() {
                 TextButton(
                     onClick = {
                         showErrorDialog = false
-                        viewModel.clearErrorMessage()
+                        webSocketViewModel.clearError()
+                        farmerListViewModel.clearError()
                     }
                 ) {
                     Text("Dismiss")
@@ -150,7 +167,7 @@ fun FarmDirectoryApp() {
     }
 
     // Success Snackbar
-    if (showSuccessSnackbar && successMessage != null) {
+    if (showSuccessSnackbar && farmerSuccess != null) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.BottomCenter
@@ -176,7 +193,7 @@ fun FarmDirectoryApp() {
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = successMessage!!,
+                        text = farmerSuccess!!,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -186,7 +203,7 @@ fun FarmDirectoryApp() {
 
     when (currentScreen) {
         "list" -> FarmerListScreen(
-            viewModel = viewModel,
+            viewModel = farmerListViewModel,
             onFarmerClick = { farmer ->
                 selectedFarmer = farmer
                 currentScreen = "details"
