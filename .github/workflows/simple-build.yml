@@ -29,7 +29,7 @@ jobs:
       run: ./gradlew assembleProdDebug --stacktrace
 
     - name: Upload Debug APK
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: app-prod-debug
         path: app/build/outputs/apk/prod/debug/app-prod-debug.apk
