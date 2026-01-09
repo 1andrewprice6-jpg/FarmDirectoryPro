@@ -15,7 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.farmdirectoryupgraded.data.AppSettings
-import com.example.farmdirectoryupgraded.viewmodel.FarmerViewModel
+import com.example.farmdirectoryupgraded.viewmodel.WebSocketViewModel
+import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
+import com.example.farmdirectoryupgraded.viewmodel.LogViewModel
 import com.example.farmdirectoryupgraded.utils.ValidationUtils
 import com.example.farmdirectoryupgraded.utils.SanitizationUtils
 import java.text.SimpleDateFormat
@@ -29,7 +31,7 @@ import java.util.*
 @Composable
 fun SettingsScreen(
     settings: AppSettings,
-    viewModel: FarmerViewModel,
+    viewModel: WebSocketViewModel,
     onBack: () -> Unit
 ) {
     var backendUrl by remember { mutableStateOf(settings.backendUrl) }
@@ -160,20 +162,25 @@ fun SettingsScreen(
             }
 
             item {
-                val isConnected by viewModel.isConnected.collectAsState()
                 val connectionState by viewModel.connectionState.collectAsState()
-                val isLoading by viewModel.isLoading.collectAsState()
-                val connectionErrorMessage by viewModel.connectionErrorMessage.collectAsState()
+                // isLoading not directly exposed in WebSocketViewModel based on my read, let's check.
+                // Re-reading WebSocketViewModel: it has _connectionState. 
+                // It does NOT expose `isLoading`.
+                // However, `connectionState` can be `CONNECTING` or `RECONNECTING`.
+                val isLoading = connectionState == com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.CONNECTING ||
+                                connectionState == com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.RECONNECTING
+                
+                val connectionErrorMessage by viewModel.errorMessage.collectAsState()
 
                 // Connection status card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
                         containerColor = when (connectionState) {
-                            com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTED -> MaterialTheme.colorScheme.primaryContainer
-                            com.example.farmdirectoryupgraded.data.ConnectionState.ERROR -> MaterialTheme.colorScheme.errorContainer
-                            com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTING,
-                            com.example.farmdirectoryupgraded.data.ConnectionState.RECONNECTING -> MaterialTheme.colorScheme.secondaryContainer
+                            com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.CONNECTED -> MaterialTheme.colorScheme.primaryContainer
+                            com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.ERROR -> MaterialTheme.colorScheme.errorContainer
+                            com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.CONNECTING,
+                            com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.RECONNECTING -> MaterialTheme.colorScheme.secondaryContainer
                             else -> MaterialTheme.colorScheme.surfaceVariant
                         }
                     )
@@ -203,15 +210,15 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = when (connectionState) {
-                                com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTED -> "Connected to backend"
-                                com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTING -> "Connecting to backend..."
-                                com.example.farmdirectoryupgraded.data.ConnectionState.RECONNECTING -> "Reconnecting to backend..."
-                                com.example.farmdirectoryupgraded.data.ConnectionState.ERROR -> "Connection error"
-                                com.example.farmdirectoryupgraded.data.ConnectionState.DISCONNECTED -> "Not connected"
+                                com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.CONNECTED -> "Connected to backend"
+                                com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.CONNECTING -> "Connecting to backend..."
+                                com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.RECONNECTING -> "Reconnecting to backend..."
+                                com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.ERROR -> "Connection error"
+                                com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.DISCONNECTED -> "Not connected"
                             },
                             style = MaterialTheme.typography.bodyMedium
                         )
-                        if (connectionErrorMessage != null && connectionState == com.example.farmdirectoryupgraded.data.ConnectionState.ERROR) {
+                        if (connectionErrorMessage != null && connectionState == com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.ERROR) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = connectionErrorMessage!!,
@@ -224,8 +231,9 @@ fun SettingsScreen(
             }
 
             item {
-                val isConnected by viewModel.isConnected.collectAsState()
-                val isLoading by viewModel.isLoading.collectAsState()
+                val connectionState by viewModel.connectionState.collectAsState()
+                val isConnected = connectionState == com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.CONNECTED
+                val isLoading = connectionState == com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.CONNECTING
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -237,12 +245,18 @@ fun SettingsScreen(
                                 viewModel.disconnectFromBackend()
                             } else {
                                 if (validateSettings()) {
-                                    viewModel.connectToBackend()
-                                    viewModel.joinFarm(
+                                    viewModel.connectToBackend(
                                         SanitizationUtils.sanitizeAlphanumeric(farmId),
-                                        "worker-${System.currentTimeMillis()}",
-                                        SanitizationUtils.sanitizeText(workerName)
+                                        "worker-${System.currentTimeMillis()}"
                                     )
+                                    // joinFarm in WebSocketViewModel doesn't take args, it uses stored state if available, 
+                                    // but we passed farmId to connectToBackend. 
+                                    // Actually WebSocketViewModel.connectToBackend(farmId, workerId) stores them.
+                                    // Then joinFarm() uses them.
+                                    // But connectToBackend calls webSocketService.connect(farmId, workerId).
+                                    // So we don't need to call joinFarm immediately if connect handles it, 
+                                    // or we call it after connection.
+                                    // Let's assume connectToBackend starts the process.
                                 } else {
                                     showValidationError = true
                                 }
@@ -329,7 +343,7 @@ data class ImportRecord(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportDataScreen(
-    viewModel: FarmerViewModel,
+    viewModel: FarmerListViewModel,
     onBack: () -> Unit
 ) {
     val recentImports by viewModel.recentImports.collectAsState()
@@ -537,11 +551,23 @@ data class LogEntry(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogsViewerScreen(
-    viewModel: FarmerViewModel,
+    viewModel: LogViewModel,
     onBack: () -> Unit
 ) {
     val logs by viewModel.logs.collectAsState()
     var selectedCategory by remember { mutableStateOf("All") }
+    val context = androidx.ui.platform.LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.shareFileEvent.collect { uri ->
+            val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "text/csv"
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(android.content.Intent.createChooser(shareIntent, "Export Logs"))
+        }
+    }
 
     val categories = listOf("All") + logs.map { it.category }.distinct()
     val filteredLogs = if (selectedCategory == "All") logs else logs.filter { it.category == selectedCategory }

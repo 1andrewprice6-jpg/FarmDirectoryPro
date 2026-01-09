@@ -28,6 +28,7 @@ import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
 import com.example.farmdirectoryupgraded.viewmodel.AttendanceViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import com.example.farmdirectoryupgraded.viewmodel.WebSocketViewModel
+import com.example.farmdirectoryupgraded.viewmodel.LogViewModel
 import com.example.farmdirectoryupgraded.viewmodel.FarmViewModelFactory
 import com.example.farmdirectoryupgraded.data.FarmWebSocketService
 
@@ -55,10 +56,12 @@ fun FarmDirectoryApp() {
     // Create factory with all required DAOs
     val viewModelFactory = remember {
         FarmViewModelFactory(
+            context = context,
             farmerDao = database.farmerDao(),
             attendanceDao = database.attendanceDao(),
             employeeDao = database.employeeDao(),
-            webSocketService = FarmWebSocketService()
+            logDao = database.logDao(),
+            webSocketService = FarmWebSocketService.getInstance()
         )
     }
 
@@ -67,6 +70,7 @@ fun FarmDirectoryApp() {
     val attendanceViewModel: AttendanceViewModel = viewModel(factory = viewModelFactory)
     val locationViewModel: LocationViewModel = viewModel(factory = viewModelFactory)
     val webSocketViewModel: WebSocketViewModel = viewModel(factory = viewModelFactory)
+    val logViewModel: LogViewModel = viewModel(factory = viewModelFactory)
 
     var currentScreen by remember { mutableStateOf("list") }
     var selectedFarmer by remember { mutableStateOf<Farmer?>(null) }
@@ -143,7 +147,7 @@ fun FarmDirectoryApp() {
                         webSocketViewModel.clearError()
                         farmerListViewModel.clearError()
                         if (errorMessage != null) {
-                            webSocketViewModel.reconnect()
+                            webSocketViewModel.retryConnection()
                         }
                     }
                 ) {
@@ -203,7 +207,8 @@ fun FarmDirectoryApp() {
 
     when (currentScreen) {
         "list" -> FarmerListScreen(
-            viewModel = farmerListViewModel,
+            farmerListViewModel = farmerListViewModel,
+            webSocketViewModel = webSocketViewModel,
             onFarmerClick = { farmer ->
                 selectedFarmer = farmer
                 currentScreen = "details"
@@ -220,19 +225,18 @@ fun FarmDirectoryApp() {
             FarmerDetailsScreen(
                 farmer = farmer,
                 onBack = { currentScreen = "list" },
-                onToggleFavorite = { viewModel.toggleFavorite(farmer) },
+                onToggleFavorite = { farmerListViewModel.toggleFavorite(farmer) },
                 onEdit = {
                     selectedFarmer = farmer
                     currentScreen = "edit"
-                },
-                viewModel = viewModel
+                }
             )
         }
         "edit" -> selectedFarmer?.let { farmer ->
             EditFarmerScreen(
                 farmer = farmer,
                 onSave = { updatedFarmer ->
-                    viewModel.updateFarmer(updatedFarmer)
+                    farmerListViewModel.updateFarmer(updatedFarmer)
                     currentScreen = "details"
                 },
                 onBack = { currentScreen = "details" }
@@ -240,34 +244,35 @@ fun FarmDirectoryApp() {
         }
         "add" -> AddFarmerScreen(
             onSave = { newFarmer ->
-                viewModel.addFarmer(newFarmer)
+                farmerListViewModel.addFarmer(newFarmer)
                 currentScreen = "list"
             },
             onBack = { currentScreen = "list" }
         )
         "settings" -> SettingsScreen(
             settings = appSettings,
-            viewModel = viewModel,
+            viewModel = webSocketViewModel,
             onBack = { currentScreen = "list" }
         )
         "import" -> ImportDataScreen(
-            viewModel = viewModel,
+            viewModel = farmerListViewModel,
             onBack = { currentScreen = "list" }
         )
         "reconcile" -> ReconcileScreen(
-            viewModel = viewModel,
+            viewModel = locationViewModel,
             onBack = { currentScreen = "list" }
         )
         "attendance" -> AttendanceScreen(
-            viewModel = viewModel,
+            viewModel = attendanceViewModel,
             onBack = { currentScreen = "list" }
         )
         "route" -> RouteOptimizationScreen(
-            viewModel = viewModel,
+            locationViewModel = locationViewModel,
+            farmerListViewModel = farmerListViewModel,
             onBack = { currentScreen = "list" }
         )
         "logs" -> LogsViewerScreen(
-            viewModel = viewModel,
+            viewModel = logViewModel,
             onBack = { currentScreen = "list" }
         )
     }
@@ -276,7 +281,8 @@ fun FarmDirectoryApp() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FarmerListScreen(
-    viewModel: FarmerViewModel,
+    farmerListViewModel: FarmerListViewModel,
+    webSocketViewModel: WebSocketViewModel,
     onFarmerClick: (Farmer) -> Unit,
     onAddClick: () -> Unit,
     onSettingsClick: () -> Unit,
@@ -286,39 +292,42 @@ fun FarmerListScreen(
     onRouteClick: () -> Unit = {},
     onLogsClick: () -> Unit = {}
 ) {
-    val farmers by viewModel.farmers.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val selectedType by viewModel.selectedType.collectAsState()
+    val farmers by farmerListViewModel.farmers.collectAsState(initial = emptyList())
+    val searchQuery by farmerListViewModel.searchQuery.collectAsState()
+    val selectedType by farmerListViewModel.selectedType.collectAsState()
     val types = listOf("All", "Pullet", "Breeder")
 
     // Real-time WebSocket state
-    val isConnected by viewModel.isConnected.collectAsState()
-    val connectionState by viewModel.connectionState.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val activeWorkers by viewModel.activeWorkers.collectAsState()
-    val recentLocationUpdate by viewModel.recentLocationUpdate.collectAsState()
-    val connectionErrorMessage by viewModel.connectionErrorMessage.collectAsState()
+    val connectionState by webSocketViewModel.connectionState.collectAsState()
+    val isLoading = connectionState == com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.CONNECTING
+    val activeWorkers by webSocketViewModel.workerPresence.collectAsState()
+    val recentLocationUpdate by webSocketViewModel.locationUpdates.collectAsState()
+    val connectionErrorMessage by webSocketViewModel.errorMessage.collectAsState()
 
     // Snackbar for health alerts
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Collect health alerts
     LaunchedEffect(Unit) {
-        viewModel.healthAlerts.collect { alert ->
-            snackbarHostState.showSnackbar(
-                message = "Health Alert: ${alert.healthNotes ?: "Check ${alert.entityId}"}",
-                duration = SnackbarDuration.Short
-            )
+        webSocketViewModel.healthAlerts.collect { alert ->
+            if (alert != null) {
+                snackbarHostState.showSnackbar(
+                    message = "Health Alert: $alert",
+                    duration = SnackbarDuration.Short
+                )
+            }
         }
     }
 
     // Collect critical alerts
     LaunchedEffect(Unit) {
-        viewModel.criticalAlerts.collect { alert ->
-            snackbarHostState.showSnackbar(
-                message = "🚨 CRITICAL: ${alert.healthNotes ?: alert.entityId}",
-                duration = SnackbarDuration.Long
-            )
+        webSocketViewModel.criticalAlerts.collect { alert ->
+            if (alert != null) {
+                snackbarHostState.showSnackbar(
+                    message = "🚨 CRITICAL: $alert",
+                    duration = SnackbarDuration.Long
+                )
+            }
         }
     }
 
@@ -347,22 +356,22 @@ fun FarmerListScreen(
                                     contentDescription = connectionState.name,
                                     modifier = Modifier.size(8.dp),
                                     tint = when (connectionState) {
-                                        com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTED -> MaterialTheme.colorScheme.tertiary
-                                        com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTING -> MaterialTheme.colorScheme.primary
-                                        com.example.farmdirectoryupgraded.data.ConnectionState.RECONNECTING -> MaterialTheme.colorScheme.secondary
-                                        com.example.farmdirectoryupgraded.data.ConnectionState.ERROR -> MaterialTheme.colorScheme.error
-                                        com.example.farmdirectoryupgraded.data.ConnectionState.DISCONNECTED -> MaterialTheme.colorScheme.onSurfaceVariant
+                                        com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.CONNECTED -> MaterialTheme.colorScheme.tertiary
+                                        com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.CONNECTING -> MaterialTheme.colorScheme.primary
+                                        com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.RECONNECTING -> MaterialTheme.colorScheme.secondary
+                                        com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.ERROR -> MaterialTheme.colorScheme.error
+                                        com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.DISCONNECTED -> MaterialTheme.colorScheme.onSurfaceVariant
                                     }
                                 )
                             }
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = when (connectionState) {
-                                    com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTED -> "Live (${activeWorkers.size} workers)"
-                                    com.example.farmdirectoryupgraded.data.ConnectionState.CONNECTING -> "Connecting..."
-                                    com.example.farmdirectoryupgraded.data.ConnectionState.RECONNECTING -> "Reconnecting..."
-                                    com.example.farmdirectoryupgraded.data.ConnectionState.ERROR -> "Error"
-                                    com.example.farmdirectoryupgraded.data.ConnectionState.DISCONNECTED -> "Offline"
+                                    com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.CONNECTED -> "Live" // worker count parsing removed for simplicity
+                                    com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.CONNECTING -> "Connecting..."
+                                    com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.RECONNECTING -> "Reconnecting..."
+                                    com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.ERROR -> "Error"
+                                    com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.DISCONNECTED -> "Offline"
                                 },
                                 style = MaterialTheme.typography.labelSmall
                             )
@@ -433,7 +442,7 @@ fun FarmerListScreen(
             // Search Bar
             OutlinedTextField(
                 value = searchQuery,
-                onValueChange = { viewModel.updateSearchQuery(it) },
+                onValueChange = { farmerListViewModel.updateSearchQuery(it) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
@@ -443,7 +452,7 @@ fun FarmerListScreen(
                 },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                        IconButton(onClick = { farmerListViewModel.updateSearchQuery("") }) {
                             Icon(Icons.Default.Clear, contentDescription = "Clear")
                         }
                     }
@@ -461,14 +470,14 @@ fun FarmerListScreen(
                 types.forEach { type ->
                     FilterChip(
                         selected = selectedType == type,
-                        onClick = { viewModel.updateSelectedType(type) },
+                        onClick = { farmerListViewModel.updateSelectedType(type) },
                         label = { Text(type) }
                     )
                 }
             }
 
             // Connection error banner with retry button
-            if (connectionState == com.example.farmdirectoryupgraded.data.ConnectionState.ERROR && connectionErrorMessage != null) {
+            if (connectionState == com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.ERROR && connectionErrorMessage != null) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -503,7 +512,7 @@ fun FarmerListScreen(
                             )
                         }
                         Button(
-                            onClick = { viewModel.retryConnection() },
+                            onClick = { webSocketViewModel.retryConnection() },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error
                             )
@@ -515,7 +524,7 @@ fun FarmerListScreen(
             }
 
             // Reconnecting indicator
-            if (connectionState == com.example.farmdirectoryupgraded.data.ConnectionState.RECONNECTING) {
+            if (connectionState == com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.RECONNECTING) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -528,7 +537,7 @@ fun FarmerListScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically
                     ) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
@@ -568,12 +577,12 @@ fun FarmerListScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Location Updated",
+                                text = "Location Update",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Entity ${update.entityId} moved by ${update.updatedBy}",
+                                text = update,
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -736,11 +745,9 @@ fun FarmerDetailsScreen(
     farmer: Farmer,
     onBack: () -> Unit,
     onToggleFavorite: () -> Unit,
-    onEdit: () -> Unit,
-    viewModel: FarmerViewModel
+    onEdit: () -> Unit
 ) {
     val context = LocalContext.current
-    val isConnected by viewModel.isConnected.collectAsState()
 
     Scaffold(
         topBar = {
