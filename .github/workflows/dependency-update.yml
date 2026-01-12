@@ -30,7 +30,7 @@ jobs:
         ./gradlew dependencyUpdates -Drevision=release
 
     - name: Upload dependency report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: dependency-updates-report
         path: build/dependencyUpdates/
