@@ -511,9 +511,9 @@ fun RouteOptimizationScreen(
         val fuelCost = (route.totalDistance / 100.0) * 8.0 * 1.50
 
         // Create stops list
-        val stops = route.farmers.mapIndexed { index, farmer -> 
+        val stops = route.farmers.mapIndexed { index, f: Farmer -> 
              RouteStop(
-                 farmName = farmer.farmName.ifBlank { farmer.name },
+                 farmName = f.farmName.ifBlank { f.name },
                  distanceFromPrevious = if (index == 0) "Start" else "...", // Simplified
                  timeFromPrevious = if (index == 0) "-" else "..."
              )
@@ -604,7 +604,7 @@ fun RouteOptimizationScreen(
                 )
             }
 
-            items(farmers.filter { it.latitude != null && it.longitude != null }) { farmer ->
+            items(farmers.filter { f -> f.latitude != null && f.longitude != null }) { farmer ->
                 Card(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -616,8 +616,8 @@ fun RouteOptimizationScreen(
                     ) {
                         Checkbox(
                             checked = selectedFarmers.contains(farmer),
-                            onCheckedChange = {
-                                selectedFarmers = if (it) {
+                            onCheckedChange = { isChecked ->
+                                selectedFarmers = if (isChecked) {
                                     selectedFarmers + farmer
                                 } else {
                                     selectedFarmers - farmer

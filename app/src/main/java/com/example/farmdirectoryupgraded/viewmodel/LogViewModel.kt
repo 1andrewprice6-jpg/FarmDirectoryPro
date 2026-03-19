@@ -118,11 +118,14 @@ class LogViewModel(
     }
 }
 
-class LogViewModelFactory(private val logDao: LogDao) : ViewModelProvider.Factory {
+class LogViewModelFactory(
+    private val context: Context,
+    private val logDao: LogDao
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(LogViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return LogViewModel(logDao) as T
+            return LogViewModel(context, logDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

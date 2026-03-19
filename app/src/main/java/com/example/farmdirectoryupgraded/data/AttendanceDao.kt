@@ -21,13 +21,13 @@ interface AttendanceDao {
     fun getActiveAttendance(): Flow<List<AttendanceRecord>>
 
     @Query("SELECT * FROM attendance_records WHERE id = :id")
-    suspend fun getAttendanceById(id: Int): AttendanceRecord?
+    suspend fun getAttendanceRecordById(id: Int): AttendanceRecord?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAttendance(record: AttendanceRecord): Long
+    suspend fun insertAttendanceRecord(record: AttendanceRecord): Long
 
     @Update
-    suspend fun updateAttendance(record: AttendanceRecord)
+    suspend fun updateAttendanceRecord(record: AttendanceRecord)
 
     @Delete
     suspend fun deleteAttendance(record: AttendanceRecord)

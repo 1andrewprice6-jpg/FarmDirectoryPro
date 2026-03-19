@@ -556,7 +556,7 @@ fun LogsViewerScreen(
 ) {
     val logs by viewModel.logs.collectAsState()
     var selectedCategory by remember { mutableStateOf("All") }
-    val context = androidx.ui.platform.LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.shareFileEvent.collect { uri ->

@@ -16,6 +16,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -70,7 +71,7 @@ class FarmerListViewModel(
     // Full list for map/search (legacy/compatibility)
     // Note: In a real large app, you wouldn't load all for map, but for this scale it's fine.
     // For now, let's expose a Flow that filters based on search query for the non-paged views
-    val farmers = com.example.farmdirectoryupgraded.utils.combine(
+    val farmers = combine(
         _searchQuery,
         _selectedType,
         farmerDao.getAllFarmers() // This returns Flow<List<Farmer>>
@@ -168,7 +169,7 @@ class FarmerListViewModel(
     fun toggleFavorite(farmer: Farmer) {
         viewModelScope.launch {
             try {
-                farmerDao.updateFavoriteSatus(farmer.id, !farmer.isFavorite)
+                farmerDao.updateFavoriteStatus(farmer.id, !farmer.isFavorite)
                 Log.d(TAG, "Farmer ${farmer.id} favorite toggled")
             } catch (e: Exception) {
                 val errorMsg = "Failed to update favorite: ${e.message}"
@@ -358,28 +359,28 @@ class FarmerListViewModel(
         for (line in lines) {
             val trimmed = line.trim()
             when {
-                trimmed.matches(Regex("(?i)name\s*:?\s*(.+)", RegexOption.IGNORE_CASE)) -> {
-                    val match = Regex("(?i)name\s*:?\s*(.+)").find(trimmed)
+                trimmed.matches(Regex("(?i)name\\s*:?\\s*(.+)", RegexOption.IGNORE_CASE)) -> {
+                    val match = Regex("(?i)name\\s*:?\\s*(.+)").find(trimmed)
                     match?.groupValues?.get(1)?.let { currentFarmer["name"] = it.trim() }
                 }
-                trimmed.matches(Regex("(?i)phone\s*:?\s*(.+)", RegexOption.IGNORE_CASE)) -> {
-                    val match = Regex("(?i)phone\s*:?\s*(.+)").find(trimmed)
+                trimmed.matches(Regex("(?i)phone\\s*:?\\s*(.+)", RegexOption.IGNORE_CASE)) -> {
+                    val match = Regex("(?i)phone\\s*:?\\s*(.+)").find(trimmed)
                     match?.groupValues?.get(1)?.let { currentFarmer["phone"] = it.trim() }
                 }
-                trimmed.matches(Regex("(?i)address\s*:?\s*(.+)", RegexOption.IGNORE_CASE)) -> {
-                    val match = Regex("(?i)address\s*:?\s*(.+)").find(trimmed)
+                trimmed.matches(Regex("(?i)address\\s*:?\\s*(.+)", RegexOption.IGNORE_CASE)) -> {
+                    val match = Regex("(?i)address\\s*:?\\s*(.+)").find(trimmed)
                     match?.groupValues?.get(1)?.let { currentFarmer["address"] = it.trim() }
                 }
-                trimmed.matches(Regex("(?i)type\s*:?\s*(.+)", RegexOption.IGNORE_CASE)) -> {
-                    val match = Regex("(?i)type\s*:?\s*(.+)").find(trimmed)
+                trimmed.matches(Regex("(?i)type\\s*:?\\s*(.+)", RegexOption.IGNORE_CASE)) -> {
+                    val match = Regex("(?i)type\\s*:?\\s*(.+)").find(trimmed)
                     match?.groupValues?.get(1)?.let { currentFarmer["type"] = it.trim() }
                 }
-                trimmed.matches(Regex("(?i)email\s*:?\s*(.+)", RegexOption.IGNORE_CASE)) -> {
-                    val match = Regex("(?i)email\s*:?\s*(.+)").find(trimmed)
+                trimmed.matches(Regex("(?i)email\\s*:?\\s*(.+)", RegexOption.IGNORE_CASE)) -> {
+                    val match = Regex("(?i)email\\s*:?\\s*(.+)").find(trimmed)
                     match?.groupValues?.get(1)?.let { currentFarmer["email"] = it.trim() }
                 }
-                trimmed.matches(Regex("(?i)farm\s*name\s*:?\s*(.+)", RegexOption.IGNORE_CASE)) -> {
-                    val match = Regex("(?i)farm\s*name\s*:?\s*(.+)").find(trimmed)
+                trimmed.matches(Regex("(?i)farm\\s*name\\s*:?\\s*(.+)", RegexOption.IGNORE_CASE)) -> {
+                    val match = Regex("(?i)farm\\s*name\\s*:?\\s*(.+)").find(trimmed)
                     match?.groupValues?.get(1)?.let { currentFarmer["farmName"] = it.trim() }
                 }
                 trimmed == "---" || trimmed == "===" -> {

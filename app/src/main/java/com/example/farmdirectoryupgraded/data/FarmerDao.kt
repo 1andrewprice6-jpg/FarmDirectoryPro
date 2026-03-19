@@ -13,6 +13,9 @@ interface FarmerDao {
     @Query("SELECT * FROM farmers ORDER BY name ASC")
     fun getAllFarmers(): Flow<List<Farmer>>
 
+    @Query("SELECT * FROM farmers ORDER BY name ASC")
+    fun getFarmersPaged(): PagingSource<Int, Farmer>
+
     /**
      * Paginated query for large datasets
      */
@@ -27,6 +30,9 @@ interface FarmerDao {
 
     @Query("SELECT * FROM farmers WHERE isFavorite = 1 ORDER BY name ASC")
     fun getFavoriteFarmers(): Flow<List<Farmer>>
+
+    @Query("UPDATE farmers SET isFavorite = :isFavorite WHERE id = :id")
+    suspend fun updateFavoriteStatus(id: Int, isFavorite: Boolean)
 
     /**
      * Search farmers with parameterized query to prevent SQL injection
@@ -59,6 +65,12 @@ interface FarmerDao {
 
     @Update
     suspend fun updateFarmer(farmer: Farmer)
+
+    @Query("UPDATE farmers SET latitude = :latitude, longitude = :longitude, lastLocationUpdate = :timestamp WHERE id = :id")
+    suspend fun updateFarmerLocation(id: Int, latitude: Double, longitude: Double, timestamp: Long)
+
+    @Query("SELECT * FROM farmers")
+    suspend fun getAllFarmersSync(): List<Farmer>
 
     @Query("DELETE FROM farmers")
     suspend fun deleteAllFarmers()

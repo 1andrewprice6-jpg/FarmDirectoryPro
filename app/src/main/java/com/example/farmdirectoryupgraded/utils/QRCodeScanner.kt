@@ -90,6 +90,34 @@ class QRCodeScanner {
             null
         }
     }
+    companion object {
+        private const val TAG_STATIC = "QRCodeScannerStatic"
+
+        /**
+         * Static parser for QR code data
+         * @param qrData Raw QR code data
+         * @return AttendanceQRData
+         */
+        fun parseQRCode(qrData: String): AttendanceQRData {
+            return try {
+                val parts = qrData.split("|").associate { part ->
+                    val split = part.split(":")
+                    val key = split[0].trim().uppercase()
+                    val value = if (split.size > 1) split[1].trim() else ""
+                    key to value
+                }
+
+                AttendanceQRData(
+                    employeeId = parts["EMP"]?.toIntOrNull() ?: 0,
+                    workLocation = parts["FARM"] ?: "",
+                    taskDescription = parts["TASK"] ?: ""
+                )
+            } catch (e: Exception) {
+                Log.e(TAG_STATIC, "Failed to parse QR data", e)
+                AttendanceQRData(0, "", "")
+            }
+        }
+    }
 }
 
 data class AttendanceQRData(

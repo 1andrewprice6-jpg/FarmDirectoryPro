@@ -106,8 +106,11 @@ class AttendanceViewModel(
         _isCheckingIn.value = true
         viewModelScope.launch {
             try {
+                val employee = employeeDao.getEmployeeById(employeeId) ?: throw Exception("Employee not found")
                 val record = AttendanceRecord(
                     employeeId = employeeId,
+                    employeeName = employee.name,
+                    employeeRole = employee.role,
                     method = "GPS",
                     checkInTime = System.currentTimeMillis(),
                     checkInLatitude = latitude,
@@ -145,14 +148,17 @@ class AttendanceViewModel(
         viewModelScope.launch {
             try {
                 val parsed = QRCodeScanner.parseQRCode(qrCodeData)
+                val employee = employeeDao.getEmployeeById(parsed.employeeId) ?: throw Exception("Employee not found")
                 val record = AttendanceRecord(
                     employeeId = parsed.employeeId,
+                    employeeName = employee.name,
+                    employeeRole = employee.role,
                     method = "QR_CODE",
                     checkInTime = System.currentTimeMillis(),
                     checkInLatitude = latitude,
                     checkInLongitude = longitude,
-                    workLocation = parsed.farmName,
-                    taskDescription = parsed.taskDescription,
+                    workLocation = parsed.workLocation ?: "",
+                    taskDescription = parsed.taskDescription ?: "",
                     notes = "QR Code: $qrCodeData"
                 )
                 attendanceDao.insertAttendanceRecord(record)
