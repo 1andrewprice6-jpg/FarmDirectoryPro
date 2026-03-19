@@ -23,6 +23,15 @@ class FarmWebSocketService(private val baseUrl: String = "https://api.farmdirect
         private const val INITIAL_RECONNECT_DELAY_MS = 1000L  // 1 second
         private const val MAX_RECONNECT_DELAY_MS = 60000L     // 1 minute
         private const val MAX_RECONNECTION_ATTEMPTS = 10
+
+        @Volatile
+        private var instance: FarmWebSocketService? = null
+
+        fun getInstance(baseUrl: String = "https://api.farmdirectory.com"): FarmWebSocketService {
+            return instance ?: synchronized(this) {
+                instance ?: FarmWebSocketService(baseUrl).also { instance = it }
+            }
+        }
     }
 
     enum class ConnectionState {
@@ -56,7 +65,7 @@ class FarmWebSocketService(private val baseUrl: String = "https://api.farmdirect
      * @param workerId The worker identifier
      */
     fun connect(farmId: String, workerId: String) {
-        if (socket?.isConnected == true) {
+        if (socket?.connected() == true) {
             Log.w(TAG, "Already connected to WebSocket")
             return
         }
@@ -221,7 +230,7 @@ class FarmWebSocketService(private val baseUrl: String = "https://api.farmdirect
      * @param data The data to send
      */
     fun sendMessage(eventName: String, data: JSONObject) {
-        if (socket?.isConnected != true) {
+        if (socket?.connected() != true) {
             Log.w(TAG, "Socket not connected, cannot send message: $eventName")
             coroutineScope.launch {
                 _errors.emit("Cannot send message: not connected")
