@@ -4,12 +4,10 @@ import android.location.Location
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.farmdirectoryupgraded.data.EmployeeDao
 import com.example.farmdirectoryupgraded.data.Farmer
 import com.example.farmdirectoryupgraded.data.FarmerDao
-import com.example.farmdirectoryupgraded.data.Employee
-import com.example.farmdirectoryupgraded.data.EmployeeDao
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.atan2
@@ -153,8 +151,10 @@ class LocationViewModel(
                     for (i in remaining.indices) {
                         val farmer = remaining[i]
                         val distance = calculateHaversineDistance(
-                            currentLat, currentLon,
-                            farmer.latitude!!, farmer.longitude!!
+                            currentLat,
+                            currentLon,
+                            farmer.latitude!!,
+                            farmer.longitude!!
                         )
                         if (distance < minDistance) {
                             minDistance = distance
@@ -209,8 +209,10 @@ class LocationViewModel(
 
                 for (farmer in farmersWithLocation) {
                     val distance = calculateHaversineDistance(
-                        currentLatitude, currentLongitude,
-                        farmer.latitude!!, farmer.longitude!!
+                        currentLatitude,
+                        currentLongitude,
+                        farmer.latitude!!,
+                        farmer.longitude!!
                     )
                     if (distance < minDistance) {
                         minDistance = distance
@@ -261,8 +263,8 @@ class LocationViewModel(
         val dLon = Math.toRadians(lon2 - lon1)
 
         val a = sin(dLat / 2) * sin(dLat / 2) +
-                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-                sin(dLon / 2) * sin(dLon / 2)
+            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+            sin(dLon / 2) * sin(dLon / 2)
 
         val c = 2 * atan2(sqrt(a), sqrt(1 - a))
         return EARTH_RADIUS_KM * c
