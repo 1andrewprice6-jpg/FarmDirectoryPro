@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
         VehicleLog::class,
         FuelLog::class
     ],
-    version = 6, // Updated: added Employee, VehicleLog, FuelLog entities; redesigned AttendanceRecord for employees
+    version = 7, // Updated: added trailerId/trailerName/destination fields to VehicleLog for haul tracking
     exportSchema = false
 )
 abstract class FarmDatabase : RoomDatabase() {
@@ -40,6 +40,9 @@ abstract class FarmDatabase : RoomDatabase() {
                     FarmDatabase::class.java,
                     "farm_directory_database"
                 )
+                    // fallbackToDestructiveMigration is used intentionally throughout this project:
+                    // all schema changes drop and recreate the database (sample data is re-seeded via
+                    // the onCreate callback). Explicit Migration objects are not required here.
                     .fallbackToDestructiveMigration()
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
