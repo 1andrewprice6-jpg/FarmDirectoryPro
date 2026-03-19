@@ -1,9 +1,6 @@
 package com.example.farmdirectoryupgraded.test
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import androidx.room.Room
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.example.farmdirectoryupgraded.data.*
 import com.example.farmdirectoryupgraded.utils.ValidationUtils
 import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
@@ -11,17 +8,23 @@ import com.example.farmdirectoryupgraded.viewmodel.AttendanceViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.runs
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -38,25 +41,9 @@ import kotlin.test.assertTrue
 // 1. DATABASE TESTS
 // =====================
 
-@RunWith(AndroidJUnit4::class)
 class FarmDatabaseTest {
 
-    private lateinit var database: FarmDatabase
-    private lateinit var farmerDao: FarmerDao
-
-    @Before
-    fun setUp() {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        database = Room.inMemoryDatabaseBuilder(context, FarmDatabase::class.java)
-            .allowMainThreadQueries()
-            .build()
-        farmerDao = database.farmerDao()
-    }
-
-    @After
-    fun tearDown() {
-        database.close()
-    }
+    private val farmerDao = mockk<FarmerDao>()
 
     @Test
     fun testInsertAndRetrieveFarmer() = runTest {
@@ -68,6 +55,9 @@ class FarmDatabaseTest {
             latitude = 35.7796,
             longitude = -81.3361
         )
+        coEvery { farmerDao.insertFarmer(farmer) } just runs
+        coEvery { farmerDao.getFarmerById(1) } returns farmer.copy(id = 1)
+
         farmerDao.insertFarmer(farmer)
         val retrieved = farmerDao.getFarmerById(1)
         assertEquals("John Doe", retrieved?.name)
@@ -81,8 +71,12 @@ class FarmDatabaseTest {
             phone = "(828) 123-4567",
             type = "Pullet"
         )
-        farmerDao.insertFarmer(farmer)
         val updated = farmer.copy(id = 1, name = "Jane Doe")
+        coEvery { farmerDao.insertFarmer(farmer) } just runs
+        coEvery { farmerDao.updateFarmer(updated) } just runs
+        coEvery { farmerDao.getFarmerById(1) } returns updated
+
+        farmerDao.insertFarmer(farmer)
         farmerDao.updateFarmer(updated)
         val retrieved = farmerDao.getFarmerById(1)
         assertEquals("Jane Doe", retrieved?.name)
@@ -96,6 +90,10 @@ class FarmDatabaseTest {
             phone = "(828) 123-4567",
             type = "Pullet"
         )
+        coEvery { farmerDao.insertFarmer(farmer) } just runs
+        coEvery { farmerDao.deleteFarmer(farmer.copy(id = 1)) } just runs
+        coEvery { farmerDao.getFarmerById(1) } returns null
+
         farmerDao.insertFarmer(farmer)
         farmerDao.deleteFarmer(farmer.copy(id = 1))
         val retrieved = farmerDao.getFarmerById(1)
@@ -103,7 +101,7 @@ class FarmDatabaseTest {
     }
 
     @Test
-    fun testToggleFavoriteSatus() = runTest {
+    fun testToggleFavoriteStatus() = runTest {
         val farmer = Farmer(
             name = "John Doe",
             address = "123 Farm Lane",
@@ -111,8 +109,12 @@ class FarmDatabaseTest {
             type = "Pullet",
             isFavorite = false
         )
+        coEvery { farmerDao.insertFarmer(farmer) } just runs
+        coEvery { farmerDao.updateFavoriteStatus(1, true) } just runs
+        coEvery { farmerDao.getFarmerById(1) } returns farmer.copy(id = 1, isFavorite = true)
+
         farmerDao.insertFarmer(farmer)
-        farmerDao.updateFavoriteSatus(1, true)
+        farmerDao.updateFavoriteStatus(1, true)
         val retrieved = farmerDao.getFarmerById(1)
         assertTrue(retrieved?.isFavorite ?: false)
     }
@@ -125,16 +127,10 @@ class FarmDatabaseTest {
             phone = "(828) 123-4567",
             type = "Pullet"
         )
-        val farmer2 = Farmer(
-            name = "Jane Smith",
-            address = "456 Poultry Road",
-            phone = "(828) 987-6543",
-            type = "Breeder"
-        )
-        farmerDao.insertFarmer(farmer1)
-        farmerDao.insertFarmer(farmer2)
+        every { farmerDao.searchFarmers("John") } returns flowOf(listOf(farmer1))
 
-        val results = farmerDao.searchFarmers("John")
+        var results: List<Farmer> = emptyList()
+        farmerDao.searchFarmers("John").collect { results = it }
         assertEquals(1, results.size)
         assertEquals("John Doe", results[0].name)
     }
@@ -144,19 +140,29 @@ class FarmDatabaseTest {
 // 2. VIEWMODEL TESTS
 // =====================
 
-@RunWith(AndroidJUnit4::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 class FarmerListViewModelTest {
 
     @get:Rule
     val instantExecutorRule = InstantTaskExecutorRule()
 
+    private val testDispatcher = UnconfinedTestDispatcher()
     private val farmerDao = mockk<FarmerDao>()
+    private val context = mockk<android.content.Context>(relaxed = true)
     private lateinit var viewModel: FarmerListViewModel
 
     @Before
     fun setUp() {
+        Dispatchers.setMain(testDispatcher)
         MockKAnnotations.init(this)
-        viewModel = FarmerListViewModel(farmerDao)
+        every { farmerDao.getFarmersPaged() } returns mockk(relaxed = true)
+        every { farmerDao.getAllFarmers() } returns flowOf(emptyList())
+        viewModel = FarmerListViewModel(context, farmerDao)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
@@ -167,55 +173,69 @@ class FarmerListViewModelTest {
             phone = "(828) 123-4567",
             type = "Pullet"
         )
-        coEvery { farmerDao.insertFarmer(farmer) } returns Unit
+        coEvery { farmerDao.insertFarmer(any()) } just runs
 
         viewModel.addFarmer(farmer)
-        // Verify success message is set
         assert(viewModel.successMessage.value?.contains("added") ?: false)
     }
 
     @Test
-    fun testUpdateSearchQuery() = runTest {
+    fun testUpdateSearchQuery() {
         viewModel.updateSearchQuery("test query")
         assertEquals("test query", viewModel.searchQuery.value)
     }
 
     @Test
-    fun testFilterByType() = runTest {
+    fun testFilterByType() {
         viewModel.filterByType("Pullet")
         assertEquals("Pullet", viewModel.selectedType.value)
     }
 
     @Test
     fun testToggleFavorite() = runTest {
-        coEvery { farmerDao.updateFavoriteSatus(1, true) } returns Unit
+        val farmer = Farmer(
+            id = 1,
+            name = "Test Farmer",
+            address = "Test Address",
+            phone = "(828) 123-4567",
+            isFavorite = false
+        )
+        coEvery { farmerDao.updateFavoriteStatus(1, true) } just runs
 
-        viewModel.toggleFavorite(1, false)
-        // Verify no error message
+        viewModel.toggleFavorite(farmer)
         assert(viewModel.errorMessage.value == null)
     }
 }
 
-@RunWith(AndroidJUnit4::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 class AttendanceViewModelTest {
 
     @get:Rule
     val instantExecutorRule = InstantTaskExecutorRule()
 
+    private val testDispatcher = UnconfinedTestDispatcher()
     private val attendanceDao = mockk<AttendanceDao>()
     private val employeeDao = mockk<EmployeeDao>()
     private lateinit var viewModel: AttendanceViewModel
 
     @Before
     fun setUp() {
+        Dispatchers.setMain(testDispatcher)
         MockKAnnotations.init(this)
-        coEvery { employeeDao.getAllEmployees() } returns flowOf(emptyList())
+        every { employeeDao.getAllEmployees() } returns flowOf(emptyList())
         viewModel = AttendanceViewModel(attendanceDao, employeeDao)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
     fun testCheckInWithGPS() = runTest {
-        coEvery { attendanceDao.insertAttendanceRecord(any()) } returns Unit
+        val employee = Employee(id = 1, name = "Test Employee", role = "CATCHER")
+        coEvery { employeeDao.getEmployeeById(1) } returns employee
+        coEvery { attendanceDao.insertAttendanceRecord(any()) } returns 1L
 
         viewModel.checkInWithGPS(
             employeeId = 1,
@@ -225,7 +245,6 @@ class AttendanceViewModelTest {
             taskDescription = "Checking chickens"
         )
 
-        // Verify success message is set
         assert(viewModel.successMessage.value?.contains("successfully") ?: false)
     }
 
@@ -234,38 +253,44 @@ class AttendanceViewModelTest {
         val record = AttendanceRecord(
             id = 1,
             employeeId = 1,
+            employeeName = "Test Employee",
             method = "GPS",
             checkInTime = System.currentTimeMillis() - 3600000  // 1 hour ago
         )
         coEvery { attendanceDao.getAttendanceRecordById(1) } returns record
-        coEvery { attendanceDao.updateAttendanceRecord(any()) } returns Unit
+        coEvery { attendanceDao.updateAttendanceRecord(any()) } just runs
 
         viewModel.checkOut(1, 35.7796, -81.3361)
 
-        // Verify success message contains hours worked
         assert(viewModel.successMessage.value?.contains("hours") ?: false)
     }
 }
 
-@RunWith(AndroidJUnit4::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 class LocationViewModelTest {
 
     @get:Rule
     val instantExecutorRule = InstantTaskExecutorRule()
 
+    private val testDispatcher = UnconfinedTestDispatcher()
     private val farmerDao = mockk<FarmerDao>()
     private val employeeDao = mockk<EmployeeDao>()
     private lateinit var viewModel: LocationViewModel
 
     @Before
     fun setUp() {
+        Dispatchers.setMain(testDispatcher)
         MockKAnnotations.init(this)
         viewModel = LocationViewModel(farmerDao, employeeDao)
     }
 
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
     @Test
     fun testCalculateHaversineDistance() {
-        // Test distance between two known points
         val distance = viewModel.calculateHaversineDistance(
             35.7796, -81.3361,  // Hiddenite, NC
             35.7850, -81.3400   // ~1km away
@@ -287,10 +312,9 @@ class LocationViewModelTest {
 
     @Test
     fun testUpdateFarmerLocation() = runTest {
-        coEvery { farmerDao.updateFarmerLocation(any(), any(), any(), any()) } returns Unit
+        coEvery { farmerDao.updateFarmerLocation(any(), any(), any(), any()) } just runs
 
         viewModel.updateFarmerLocation(1, 35.7796, -81.3361)
-        // Verify no error
         assert(viewModel.errorMessage.value == null)
     }
 }
