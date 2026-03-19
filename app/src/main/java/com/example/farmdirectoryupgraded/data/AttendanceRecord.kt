@@ -20,7 +20,7 @@ data class AttendanceRecord(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     val employeeId: Int, // Reference to Employee ID
-    val employeeName: String, // Employee name for display
+    val employeeName: String = "", // Employee name for display
     val employeeRole: String = "", // Role at time of check-in (for historical accuracy)
     val method: String, // GPS, QR_CODE, MANUAL, NFC, PHOTO, BIOMETRIC, BLUETOOTH
     val checkInTime: Long, // Timestamp in milliseconds
