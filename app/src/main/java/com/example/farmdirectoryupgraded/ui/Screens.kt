@@ -15,12 +15,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.farmdirectoryupgraded.data.AppSettings
-import com.example.farmdirectoryupgraded.viewmodel.WebSocketViewModel
+import com.example.farmdirectoryupgraded.utils.SanitizationUtils
+import com.example.farmdirectoryupgraded.utils.ValidationUtils
 import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LogViewModel
-import com.example.farmdirectoryupgraded.utils.ValidationUtils
-import com.example.farmdirectoryupgraded.utils.SanitizationUtils
-import java.text.SimpleDateFormat
+import com.example.farmdirectoryupgraded.viewmodel.WebSocketViewModel
 import java.util.*
 
 // ========================================================================
@@ -164,12 +163,12 @@ fun SettingsScreen(
             item {
                 val connectionState by viewModel.connectionState.collectAsState()
                 // isLoading not directly exposed in WebSocketViewModel based on my read, let's check.
-                // Re-reading WebSocketViewModel: it has _connectionState. 
+                // Re-reading WebSocketViewModel: it has _connectionState.
                 // It does NOT expose `isLoading`.
                 // However, `connectionState` can be `CONNECTING` or `RECONNECTING`.
                 val isLoading = connectionState == com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.CONNECTING ||
-                                connectionState == com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.RECONNECTING
-                
+                    connectionState == com.example.farmdirectoryupgraded.data.FarmWebSocketService.ConnectionState.RECONNECTING
+
                 val connectionErrorMessage by viewModel.errorMessage.collectAsState()
 
                 // Connection status card
@@ -249,12 +248,12 @@ fun SettingsScreen(
                                         SanitizationUtils.sanitizeAlphanumeric(farmId),
                                         "worker-${System.currentTimeMillis()}"
                                     )
-                                    // joinFarm in WebSocketViewModel doesn't take args, it uses stored state if available, 
-                                    // but we passed farmId to connectToBackend. 
+                                    // joinFarm in WebSocketViewModel doesn't take args, it uses stored state if available,
+                                    // but we passed farmId to connectToBackend.
                                     // Actually WebSocketViewModel.connectToBackend(farmId, workerId) stores them.
                                     // Then joinFarm() uses them.
                                     // But connectToBackend calls webSocketService.connect(farmId, workerId).
-                                    // So we don't need to call joinFarm immediately if connect handles it, 
+                                    // So we don't need to call joinFarm immediately if connect handles it,
                                     // or we call it after connection.
                                     // Let's assume connectToBackend starts the process.
                                 } else {
@@ -495,10 +494,11 @@ fun ImportRecordCard(record: ImportRecord) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (record.success)
+            containerColor = if (record.success) {
                 MaterialTheme.colorScheme.primaryContainer
-            else
+            } else {
                 MaterialTheme.colorScheme.errorContainer
+            }
         )
     ) {
         Row(
@@ -510,10 +510,11 @@ fun ImportRecordCard(record: ImportRecord) {
             Icon(
                 if (record.success) Icons.Default.CheckCircle else Icons.Default.Error,
                 contentDescription = null,
-                tint = if (record.success)
+                tint = if (record.success) {
                     MaterialTheme.colorScheme.onPrimaryContainer
-                else
+                } else {
                     MaterialTheme.colorScheme.onErrorContainer
+                }
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {

@@ -83,7 +83,7 @@ class LogViewModel(
                 // Get all logs directly from DB (suspend function needed in DAO, but currently it returns Flow)
                 // We'll collect the current value of the flow for export
                 val currentLogs = logs.value
-                
+
                 if (currentLogs.isEmpty()) {
                     addLog("System", "WARNING", "Export failed", "No logs to export")
                     return@launch
@@ -95,8 +95,12 @@ class LogViewModel(
                 withContext(Dispatchers.IO) {
                     FileWriter(file).use { writer ->
                         writer.append("Timestamp,Level,Category,Message,Details\n")
+                        val q = "\""
                         currentLogs.forEach {
-                            writer.append("${it.timestamp},${it.level},${it.category},\"${it.message}\",\"${it.details}\"\n")
+                            writer.append(
+                                "${it.timestamp},${it.level},${it.category}," +
+                                    "$q${it.message}$q,$q${it.details}$q\n"
+                            )
                         }
                     }
                 }
