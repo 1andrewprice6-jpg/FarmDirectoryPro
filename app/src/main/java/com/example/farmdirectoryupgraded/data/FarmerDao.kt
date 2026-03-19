@@ -60,6 +60,21 @@ interface FarmerDao {
     @Update
     suspend fun updateFarmer(farmer: Farmer)
 
+    @Query("UPDATE farmers SET isFavorite = :isFavorite WHERE id = :id")
+    suspend fun updateFavoriteStatus(id: Int, isFavorite: Boolean)
+
+    @Query("UPDATE farmers SET latitude = :latitude, longitude = :longitude, lastLocationUpdate = :lastLocationUpdate WHERE id = :id")
+    suspend fun updateFarmerLocation(id: Int, latitude: Double, longitude: Double, lastLocationUpdate: Long)
+
+    @Query("SELECT * FROM farmers ORDER BY name ASC")
+    suspend fun getAllFarmersSync(): List<Farmer>
+
+    /**
+     * Paginated source for Paging 3 library
+     */
+    @Query("SELECT * FROM farmers ORDER BY name ASC")
+    fun getFarmersPaged(): PagingSource<Int, Farmer>
+
     @Query("DELETE FROM farmers")
     suspend fun deleteAllFarmers()
 

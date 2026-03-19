@@ -96,7 +96,7 @@ class LogViewModel(
                     FileWriter(file).use { writer ->
                         writer.append("Timestamp,Level,Category,Message,Details\n")
                         currentLogs.forEach {
-                            writer.append("${it.timestamp},${it.level},${it.category},\"${it.message}\",\"${it.details}\")
+                            writer.append("${it.timestamp},${it.level},${it.category},\"${it.message}\",\"${it.details}\"\n")
                         }
                     }
                 }
@@ -118,11 +118,14 @@ class LogViewModel(
     }
 }
 
-class LogViewModelFactory(private val logDao: LogDao) : ViewModelProvider.Factory {
+class LogViewModelFactory(
+    private val context: android.content.Context,
+    private val logDao: LogDao
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(LogViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return LogViewModel(logDao) as T
+            return LogViewModel(context, logDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
