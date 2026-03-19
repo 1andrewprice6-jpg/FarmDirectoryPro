@@ -38,6 +38,13 @@ data class VehicleLog(
     val cost: Double? = null,
     val vendor: String = "",
 
+    // Trailer details (for haul trips)
+    val trailerId: String = "", // Trailer identifier (license plate, number, etc.)
+    val trailerName: String = "", // Trailer description (e.g., "Trailer #3", "48ft Livestock")
+
+    // Haul destination (e.g., Purdue, Mountaire)
+    val destination: String = "", // Processing plant or drop-off location name
+
     // General
     val notes: String = "",
     val photoPath: String? = null,

@@ -4,8 +4,8 @@ import android.content.Context
 import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.farmdirectoryupgraded.data.HaulLogDetails
 import com.example.farmdirectoryupgraded.data.LogDao
 import com.example.farmdirectoryupgraded.data.LogEntry
 import com.example.farmdirectoryupgraded.ui.LogLevel
@@ -94,9 +94,14 @@ class LogViewModel(
 
                 withContext(Dispatchers.IO) {
                     FileWriter(file).use { writer ->
-                        writer.append("Timestamp,Level,Category,Message,Details\n")
+                        writer.append("Timestamp,Level,Category,Message,Truck,Trailer,Destination,Details\n")
                         currentLogs.forEach {
-                            writer.append("${it.timestamp},${it.level},${it.category},\"${it.message}\",\"${it.details}\")
+                            val haul = HaulLogDetails.parse(it.details)
+                            val truck = haul?.let { h -> if (h.truckName.isNotEmpty()) h.truckName else h.truckId } ?: ""
+                            val trailer = haul?.let { h -> if (h.trailerName.isNotEmpty()) h.trailerName else h.trailerId } ?: ""
+                            val destination = haul?.destination ?: ""
+                            val extra = haul?.farmName ?: it.details
+                            writer.append("${it.timestamp},${it.level},${it.category},\"${it.message}\",\"$truck\",\"$trailer\",\"$destination\",\"$extra\"\n")
                         }
                     }
                 }
@@ -116,14 +121,40 @@ class LogViewModel(
             }
         }
     }
-}
 
-class LogViewModelFactory(private val logDao: LogDao) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(LogViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return LogViewModel(logDao) as T
+    /**
+     * Logs a haul event with truck, trailer, destination, and farm details.
+     * Destination should be one of: "Purdue", "Mountaire", or another plant name.
+     */
+    fun addHaulLog(
+        truckId: String,
+        truckName: String,
+        trailerId: String,
+        trailerName: String,
+        destination: String,
+        farmName: String,
+        level: String = "INFO",
+        message: String,
+        farmerId: Int? = null
+    ) {
+        viewModelScope.launch {
+            val details = HaulLogDetails(
+                truckId = truckId,
+                truckName = truckName,
+                trailerId = trailerId,
+                trailerName = trailerName,
+                destination = destination,
+                farmName = farmName
+            ).encode()
+            val logEntry = LogEntry(
+                category = "Haul",
+                level = level,
+                message = message,
+                details = details,
+                timestamp = System.currentTimeMillis(),
+                farmerId = farmerId
+            )
+            logDao.insertLog(logEntry)
         }
-        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

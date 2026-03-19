@@ -3,9 +3,11 @@ package com.example.farmdirectoryupgraded.ui
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -15,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.farmdirectoryupgraded.data.AppSettings
+import com.example.farmdirectoryupgraded.data.HaulLogDetails
 import com.example.farmdirectoryupgraded.viewmodel.WebSocketViewModel
 import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LogViewModel
@@ -556,7 +559,7 @@ fun LogsViewerScreen(
 ) {
     val logs by viewModel.logs.collectAsState()
     var selectedCategory by remember { mutableStateOf("All") }
-    val context = androidx.ui.platform.LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.shareFileEvent.collect { uri ->
@@ -569,8 +572,14 @@ fun LogsViewerScreen(
         }
     }
 
-    val categories = listOf("All") + logs.map { it.category }.distinct()
-    val filteredLogs = if (selectedCategory == "All") logs else logs.filter { it.category == selectedCategory }
+    val categories = listOf("All", "Haul", "Purdue", "Mountaire") +
+        logs.map { it.category }.distinct().filter { it !in listOf("Haul", "Purdue", "Mountaire") }
+    val filteredLogs = when (selectedCategory) {
+        "All" -> logs
+        "Purdue" -> logs.filter { it.category == "Haul" && it.details.contains("${HaulLogDetails.KEY_DESTINATION}:Purdue", ignoreCase = true) }
+        "Mountaire" -> logs.filter { it.category == "Haul" && it.details.contains("${HaulLogDetails.KEY_DESTINATION}:Mountaire", ignoreCase = true) }
+        else -> logs.filter { it.category == selectedCategory }
+    }
 
     Scaffold(
         topBar = {
@@ -601,11 +610,12 @@ fun LogsViewerScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Category filter
+            // Category filter (scrollable to accommodate haul-specific filters)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 categories.forEach { category ->
@@ -632,6 +642,8 @@ fun LogsViewerScreen(
 
 @Composable
 fun LogEntryCard(log: LogEntry) {
+    val haulDetails = if (log.category == "Haul") HaulLogDetails.parse(log.details) else null
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -681,7 +693,40 @@ fun LogEntryCard(log: LogEntry) {
                 text = log.message,
                 style = MaterialTheme.typography.bodyMedium
             )
-            if (log.details.isNotEmpty()) {
+            if (haulDetails != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                if (haulDetails.destination.isNotEmpty()) {
+                    Text(
+                        text = "🏭 Destination: ${haulDetails.destination}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                val truckDisplay = haulDetails.truckName.ifEmpty { haulDetails.truckId }
+                if (truckDisplay.isNotEmpty()) {
+                    Text(
+                        text = "🚛 Truck: $truckDisplay",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                val trailerDisplay = haulDetails.trailerName.ifEmpty { haulDetails.trailerId }
+                if (trailerDisplay.isNotEmpty()) {
+                    Text(
+                        text = "🚚 Trailer: $trailerDisplay",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (haulDetails.farmName.isNotEmpty()) {
+                    Text(
+                        text = "🌾 Farm: ${haulDetails.farmName}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else if (log.details.isNotEmpty()) {
                 Text(
                     text = log.details,
                     style = MaterialTheme.typography.bodySmall,
@@ -690,4 +735,5 @@ fun LogEntryCard(log: LogEntry) {
             }
         }
     }
+}
 }
