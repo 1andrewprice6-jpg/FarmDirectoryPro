@@ -736,4 +736,3 @@ fun LogEntryCard(log: LogEntry) {
         }
     }
 }
-}
