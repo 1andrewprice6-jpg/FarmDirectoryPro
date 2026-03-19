@@ -96,7 +96,7 @@ class LogViewModel(
                     FileWriter(file).use { writer ->
                         writer.append("Timestamp,Level,Category,Message,Details\n")
                         currentLogs.forEach {
-                            writer.append("${it.timestamp},${it.level},${it.category},\"${it.message}\",\"${it.details}\")
+                            writer.append("${it.timestamp},${it.level},${it.category},\"${it.message}\",\"${it.details}\"\n")
                         }
                     }
                 }
