@@ -198,6 +198,7 @@ private suspend fun captureAndProcessImage(
         imageCapture.takePicture(
             executor,
             object : ImageCapture.OnImageCapturedCallback() {
+                @androidx.camera.core.ExperimentalGetImage
                 override fun onCaptureSuccess(imageProxy: ImageProxy) {
                     var recognizedText = ""
 
