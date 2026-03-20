@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.example.farmdirectoryupgraded.data.AttendanceDao
 import com.example.farmdirectoryupgraded.data.AttendanceRecord
+import com.example.farmdirectoryupgraded.data.Employee
 import com.example.farmdirectoryupgraded.data.EmployeeDao
 import com.example.farmdirectoryupgraded.data.Farmer
 import com.example.farmdirectoryupgraded.data.FarmerDao
@@ -14,8 +15,13 @@ import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -67,7 +73,7 @@ class FarmDatabaseTest {
             type = "Pullet"
         )
         val updated = original.copy(name = "Jane Doe")
-        coEvery { farmerDao.getFarmerById(1) } returns original andThen updated
+        coEvery { farmerDao.getFarmerById(1) } returns updated
         farmerDao.insertFarmer(original)
         farmerDao.updateFarmer(updated)
         val retrieved = farmerDao.getFarmerById(1)
@@ -83,7 +89,7 @@ class FarmDatabaseTest {
             phone = "(828) 123-4567",
             type = "Pullet"
         )
-        coEvery { farmerDao.getFarmerById(1) } returns farmer andThen null
+        coEvery { farmerDao.getFarmerById(1) } returns null
         farmerDao.insertFarmer(farmer)
         farmerDao.deleteFarmer(farmer)
         val retrieved = farmerDao.getFarmerById(1)
@@ -138,13 +144,20 @@ class FarmerListViewModelTest {
     val instantExecutorRule = InstantTaskExecutorRule()
 
     private val context = mockk<Context>(relaxed = true)
-    private val farmerDao = mockk<FarmerDao>()
+    private val farmerDao = mockk<FarmerDao>(relaxed = true)
     private lateinit var viewModel: FarmerListViewModel
 
     @Before
     fun setUp() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         MockKAnnotations.init(this)
+        coEvery { farmerDao.getAllFarmers() } returns flowOf(emptyList())
         viewModel = FarmerListViewModel(context, farmerDao)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
@@ -203,13 +216,24 @@ class AttendanceViewModelTest {
 
     @Before
     fun setUp() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         MockKAnnotations.init(this)
         coEvery { employeeDao.getAllEmployees() } returns flowOf(emptyList())
         viewModel = AttendanceViewModel(attendanceDao, employeeDao)
     }
 
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
     @Test
     fun testCheckInWithGPS() = runTest {
+        coEvery { employeeDao.getEmployeeById(1) } returns Employee(
+            id = 1,
+            name = "Test Employee",
+            role = "CATCHER"
+        )
         coEvery { attendanceDao.insertAttendanceRecord(any()) } returns 1L
 
         viewModel.checkInWithGPS(
@@ -254,16 +278,22 @@ class LocationViewModelTest {
 
     @Before
     fun setUp() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         MockKAnnotations.init(this)
         viewModel = LocationViewModel(farmerDao, employeeDao)
     }
 
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
     @Test
     fun testCalculateHaversineDistance() {
-        // Test distance between two known points
+        // Test distance between two known points approximately 1 km apart (due north)
         val distance = viewModel.calculateHaversineDistance(
             35.7796, -81.3361, // Hiddenite, NC
-            35.7850, -81.3400 // ~1km away
+            35.7886, -81.3361 // ~1km north
         )
         assertTrue(distance in 0.9..1.2) // Should be approximately 1km
     }
