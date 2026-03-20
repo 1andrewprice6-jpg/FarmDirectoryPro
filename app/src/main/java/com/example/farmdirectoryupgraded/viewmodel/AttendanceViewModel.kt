@@ -302,7 +302,7 @@ class AttendanceViewModel(
     private fun calculateHoursWorked(checkInTimeMs: Long): Double {
         val currentTimeMs = System.currentTimeMillis()
         val durationMs = currentTimeMs - checkInTimeMs
-        return durationMs / (1000.0 * 60 * 60)  // Convert milliseconds to hours
+        return durationMs / (1000.0 * 60 * 60) // Convert milliseconds to hours
     }
 
     /**

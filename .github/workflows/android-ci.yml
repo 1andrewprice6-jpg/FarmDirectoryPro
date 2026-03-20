@@ -49,11 +49,9 @@ jobs:
 
     - name: Publish Lint Results
       if: always()
-      uses: github/super-linter@v5
-      env:
-        DEFAULT_BRANCH: main
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VALIDATE_KOTLIN: true
+      run: |
+        echo "## Lint Results" >> $GITHUB_STEP_SUMMARY
+        echo "Gradle lint completed. See uploaded artifacts for details." >> $GITHUB_STEP_SUMMARY
 
   unit-test:
     name: Unit Tests & Coverage

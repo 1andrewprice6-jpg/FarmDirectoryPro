@@ -77,7 +77,7 @@ class FarmerListViewModel(
         farmerDao.getAllFarmers() // This returns Flow<List<Farmer>>
     ) { query, type, list ->
         list.filter {
-            (query.isEmpty() || it.name.contains(query, ignoreCase = true) || 
+            (query.isEmpty() || it.name.contains(query, ignoreCase = true) ||
              it.farmName.contains(query, ignoreCase = true)) &&
             (type == null || type == "All" || it.type == type)
         }
@@ -100,7 +100,7 @@ class FarmerListViewModel(
     fun updateSelectedType(type: String?) {
         _selectedType.value = type
     }
-    
+
     // Alias for compatibility
     fun filterByType(type: String?) {
         updateSelectedType(type)
