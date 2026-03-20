@@ -1,9 +1,7 @@
 package com.example.farmdirectoryupgraded.test
 
+import android.content.Context
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import androidx.room.Room
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.example.farmdirectoryupgraded.data.*
 import com.example.farmdirectoryupgraded.utils.ValidationUtils
 import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
@@ -12,151 +10,56 @@ import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
  * Unit Tests for FarmDirectoryPro Application
  *
  * Test categories:
- * 1. Database & DAO Tests
- * 2. ViewModel Tests
- * 3. Utility & Validation Tests
- * 4. Security Tests
+ * 1. ViewModel Tests
+ * 2. Utility & Validation Tests
+ * 3. Security Tests
+ *
+ * Note: Database tests (requiring Android context) are in androidTest.
  */
 
 // =====================
-// 1. DATABASE TESTS
+// 1. VIEWMODEL TESTS
 // =====================
 
-@RunWith(AndroidJUnit4::class)
-class FarmDatabaseTest {
-
-    private lateinit var database: FarmDatabase
-    private lateinit var farmerDao: FarmerDao
-
-    @Before
-    fun setUp() {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        database = Room.inMemoryDatabaseBuilder(context, FarmDatabase::class.java)
-            .allowMainThreadQueries()
-            .build()
-        farmerDao = database.farmerDao()
-    }
-
-    @After
-    fun tearDown() {
-        database.close()
-    }
-
-    @Test
-    fun testInsertAndRetrieveFarmer() = runTest {
-        val farmer = Farmer(
-            name = "John Doe",
-            address = "123 Farm Lane",
-            phone = "(828) 123-4567",
-            type = "Pullet",
-            latitude = 35.7796,
-            longitude = -81.3361
-        )
-        farmerDao.insertFarmer(farmer)
-        val retrieved = farmerDao.getFarmerById(1)
-        assertEquals("John Doe", retrieved?.name)
-    }
-
-    @Test
-    fun testUpdateFarmer() = runTest {
-        val farmer = Farmer(
-            name = "John Doe",
-            address = "123 Farm Lane",
-            phone = "(828) 123-4567",
-            type = "Pullet"
-        )
-        farmerDao.insertFarmer(farmer)
-        val updated = farmer.copy(id = 1, name = "Jane Doe")
-        farmerDao.updateFarmer(updated)
-        val retrieved = farmerDao.getFarmerById(1)
-        assertEquals("Jane Doe", retrieved?.name)
-    }
-
-    @Test
-    fun testDeleteFarmer() = runTest {
-        val farmer = Farmer(
-            name = "John Doe",
-            address = "123 Farm Lane",
-            phone = "(828) 123-4567",
-            type = "Pullet"
-        )
-        farmerDao.insertFarmer(farmer)
-        farmerDao.deleteFarmer(farmer.copy(id = 1))
-        val retrieved = farmerDao.getFarmerById(1)
-        assertEquals(null, retrieved)
-    }
-
-    @Test
-    fun testToggleFavoriteSatus() = runTest {
-        val farmer = Farmer(
-            name = "John Doe",
-            address = "123 Farm Lane",
-            phone = "(828) 123-4567",
-            type = "Pullet",
-            isFavorite = false
-        )
-        farmerDao.insertFarmer(farmer)
-        farmerDao.updateFavoriteSatus(1, true)
-        val retrieved = farmerDao.getFarmerById(1)
-        assertTrue(retrieved?.isFavorite ?: false)
-    }
-
-    @Test
-    fun testSearchFarmers() = runTest {
-        val farmer1 = Farmer(
-            name = "John Doe",
-            address = "123 Farm Lane",
-            phone = "(828) 123-4567",
-            type = "Pullet"
-        )
-        val farmer2 = Farmer(
-            name = "Jane Smith",
-            address = "456 Poultry Road",
-            phone = "(828) 987-6543",
-            type = "Breeder"
-        )
-        farmerDao.insertFarmer(farmer1)
-        farmerDao.insertFarmer(farmer2)
-
-        val results = farmerDao.searchFarmers("John")
-        assertEquals(1, results.size)
-        assertEquals("John Doe", results[0].name)
-    }
-}
-
-// =====================
-// 2. VIEWMODEL TESTS
-// =====================
-
-@RunWith(AndroidJUnit4::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 class FarmerListViewModelTest {
 
     @get:Rule
     val instantExecutorRule = InstantTaskExecutorRule()
 
+    private val context = mockk<Context>(relaxed = true)
     private val farmerDao = mockk<FarmerDao>()
     private lateinit var viewModel: FarmerListViewModel
 
     @Before
     fun setUp() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         MockKAnnotations.init(this)
-        viewModel = FarmerListViewModel(farmerDao)
+        viewModel = FarmerListViewModel(context, farmerDao)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
@@ -188,15 +91,23 @@ class FarmerListViewModelTest {
 
     @Test
     fun testToggleFavorite() = runTest {
-        coEvery { farmerDao.updateFavoriteSatus(1, true) } returns Unit
+        val farmer = Farmer(
+            id = 1,
+            name = "Test Farmer",
+            address = "Test Address",
+            phone = "(828) 123-4567",
+            type = "Pullet",
+            isFavorite = false
+        )
+        coEvery { farmerDao.updateFavoriteStatus(1, true) } returns Unit
 
-        viewModel.toggleFavorite(1, false)
+        viewModel.toggleFavorite(farmer)
         // Verify no error message
         assert(viewModel.errorMessage.value == null)
     }
 }
 
-@RunWith(AndroidJUnit4::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 class AttendanceViewModelTest {
 
     @get:Rule
@@ -208,14 +119,22 @@ class AttendanceViewModelTest {
 
     @Before
     fun setUp() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         MockKAnnotations.init(this)
         coEvery { employeeDao.getAllEmployees() } returns flowOf(emptyList())
         viewModel = AttendanceViewModel(attendanceDao, employeeDao)
     }
 
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
     @Test
     fun testCheckInWithGPS() = runTest {
-        coEvery { attendanceDao.insertAttendanceRecord(any()) } returns Unit
+        val employee = Employee(id = 1, name = "Test Employee", role = "CATCHER", phone = "", email = "")
+        coEvery { employeeDao.getEmployeeById(1) } returns employee
+        coEvery { attendanceDao.insertAttendanceRecord(any()) } returns 1L
 
         viewModel.checkInWithGPS(
             employeeId = 1,
@@ -234,6 +153,7 @@ class AttendanceViewModelTest {
         val record = AttendanceRecord(
             id = 1,
             employeeId = 1,
+            employeeName = "Test Employee",
             method = "GPS",
             checkInTime = System.currentTimeMillis() - 3600000  // 1 hour ago
         )
@@ -247,7 +167,7 @@ class AttendanceViewModelTest {
     }
 }
 
-@RunWith(AndroidJUnit4::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 class LocationViewModelTest {
 
     @get:Rule
@@ -259,8 +179,14 @@ class LocationViewModelTest {
 
     @Before
     fun setUp() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         MockKAnnotations.init(this)
         viewModel = LocationViewModel(farmerDao, employeeDao)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
@@ -296,7 +222,7 @@ class LocationViewModelTest {
 }
 
 // =====================
-// 3. VALIDATION TESTS
+// 2. VALIDATION TESTS
 // =====================
 
 class ValidationUtilsTest {
@@ -381,7 +307,7 @@ class ValidationUtilsTest {
 }
 
 // =====================
-// 4. SECURITY TESTS
+// 3. SECURITY TESTS
 // =====================
 
 class SecurityTest {
