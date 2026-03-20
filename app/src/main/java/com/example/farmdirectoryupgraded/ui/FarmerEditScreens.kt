@@ -2,6 +2,7 @@ package com.example.farmdirectoryupgraded.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -11,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.text.KeyboardOptions
 import com.example.farmdirectoryupgraded.data.Farmer
 import com.example.farmdirectoryupgraded.utils.ValidationUtils
 import com.example.farmdirectoryupgraded.utils.SanitizationUtils

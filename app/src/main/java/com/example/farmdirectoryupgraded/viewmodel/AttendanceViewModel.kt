@@ -3,16 +3,14 @@ package com.example.farmdirectoryupgraded.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.farmdirectoryupgraded.data.AttendanceRecord
 import com.example.farmdirectoryupgraded.data.AttendanceDao
+import com.example.farmdirectoryupgraded.data.AttendanceRecord
 import com.example.farmdirectoryupgraded.data.Employee
 import com.example.farmdirectoryupgraded.data.EmployeeDao
 import com.example.farmdirectoryupgraded.utils.QRCodeScanner
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.Date
 
 /**
  * ViewModel for attendance tracking operations

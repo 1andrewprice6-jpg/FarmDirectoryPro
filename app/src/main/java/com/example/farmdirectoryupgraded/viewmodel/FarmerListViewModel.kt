@@ -16,7 +16,6 @@ import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -71,15 +70,16 @@ class FarmerListViewModel(
     // Full list for map/search (legacy/compatibility)
     // Note: In a real large app, you wouldn't load all for map, but for this scale it's fine.
     // For now, let's expose a Flow that filters based on search query for the non-paged views
-    val farmers = combine(
+    val farmers = com.example.farmdirectoryupgraded.utils.combine(
         _searchQuery,
         _selectedType,
         farmerDao.getAllFarmers() // This returns Flow<List<Farmer>>
     ) { query, type, list ->
         list.filter {
-            (query.isEmpty() || it.name.contains(query, ignoreCase = true) || 
-             it.farmName.contains(query, ignoreCase = true)) &&
-            (type == null || type == "All" || it.type == type)
+            (
+                query.isEmpty() || it.name.contains(query, ignoreCase = true) ||
+                    it.farmName.contains(query, ignoreCase = true)
+            ) && (type == null || type == "All" || it.type == type)
         }
     }
 
@@ -100,7 +100,7 @@ class FarmerListViewModel(
     fun updateSelectedType(type: String?) {
         _selectedType.value = type
     }
-    
+
     // Alias for compatibility
     fun filterByType(type: String?) {
         updateSelectedType(type)

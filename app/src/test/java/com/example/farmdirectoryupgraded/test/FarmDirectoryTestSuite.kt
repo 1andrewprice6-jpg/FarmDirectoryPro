@@ -6,8 +6,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.farmdirectoryupgraded.data.*
 import com.example.farmdirectoryupgraded.utils.ValidationUtils
-import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
 import com.example.farmdirectoryupgraded.viewmodel.AttendanceViewModel
+import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
@@ -21,7 +21,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -235,7 +234,7 @@ class AttendanceViewModelTest {
             id = 1,
             employeeId = 1,
             method = "GPS",
-            checkInTime = System.currentTimeMillis() - 3600000  // 1 hour ago
+            checkInTime = System.currentTimeMillis() - 3600000 // 1 hour ago
         )
         coEvery { attendanceDao.getAttendanceRecordById(1) } returns record
         coEvery { attendanceDao.updateAttendanceRecord(any()) } returns Unit
@@ -267,10 +266,12 @@ class LocationViewModelTest {
     fun testCalculateHaversineDistance() {
         // Test distance between two known points
         val distance = viewModel.calculateHaversineDistance(
-            35.7796, -81.3361,  // Hiddenite, NC
-            35.7850, -81.3400   // ~1km away
+            35.7796,
+            -81.3361,
+            35.7850,
+            -81.3400
         )
-        assertTrue(distance in 0.9..1.2)  // Should be approximately 1km
+        assertTrue(distance in 0.9..1.2) // Should be approximately 1km
     }
 
     @Test
@@ -316,7 +317,7 @@ class ValidationUtilsTest {
     @Test
     fun testEmptyEmailIsValid() {
         val result = ValidationUtils.validateEmail("")
-        assertTrue(result.isValid)  // Optional field
+        assertTrue(result.isValid) // Optional field
     }
 
     @Test

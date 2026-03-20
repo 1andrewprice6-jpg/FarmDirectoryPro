@@ -5,9 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.farmdirectoryupgraded.data.AttendanceDao
 import com.example.farmdirectoryupgraded.data.EmployeeDao
+import com.example.farmdirectoryupgraded.data.FarmWebSocketService
 import com.example.farmdirectoryupgraded.data.FarmerDao
 import com.example.farmdirectoryupgraded.data.LogDao
-import com.example.farmdirectoryupgraded.data.FarmWebSocketService
 
 /**
  * Factory for creating ViewModels with their required dependencies
