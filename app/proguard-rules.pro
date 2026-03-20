@@ -81,11 +81,8 @@
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
 
-# Optimization settings
--optimizationpasses 5
+# Optimization settings (R8-compatible options only)
 -dontusemixedcaseclassnames
--dontskipnonpubliclibraryclasses
--dontskipnonpubliclibraryinterfaces
 
 # Remove logging in release builds (optional - comment out if you want logs)
 -assumenosideeffects class android.util.Log {

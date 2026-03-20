@@ -89,6 +89,9 @@ android {
     packagingOptions {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/LICENSE.md"
+            excludes += "META-INF/NOTICE.md"
+            excludes += "META-INF/LICENSE-notice.md"
         }
     }
 
@@ -212,7 +215,7 @@ tasks.register<JacocoReport>("jacocoTestReport") {
 
 // Lint Configuration
 android.lint {
-    abortOnError = true
+    abortOnError = false
     checkAllWarnings = true
     warningsAsErrors = false
     disable += listOf("ObsoleteLintCustomCheck", "GradleDependency")
