@@ -80,4 +80,28 @@ interface FarmerDao {
      */
     @Query("SELECT * FROM farmers WHERE name = :name LIMIT 1")
     suspend fun getFarmerByName(name: String): Farmer?
+
+    /**
+     * Paginated source for use with Paging 3
+     */
+    @Query("SELECT * FROM farmers ORDER BY name ASC")
+    fun getFarmersPaged(): PagingSource<Int, Farmer>
+
+    /**
+     * Synchronous query for all farmers (used for route reconciliation)
+     */
+    @Query("SELECT * FROM farmers ORDER BY name ASC")
+    suspend fun getAllFarmersSync(): List<Farmer>
+
+    /**
+     * Update farmer favorite status
+     */
+    @Query("UPDATE farmers SET isFavorite = :isFavorite WHERE id = :id")
+    suspend fun updateFavoriteSatus(id: Int, isFavorite: Boolean)
+
+    /**
+     * Update farmer GPS location
+     */
+    @Query("UPDATE farmers SET latitude = :latitude, longitude = :longitude, lastLocationUpdate = :timestamp WHERE id = :id")
+    suspend fun updateFarmerLocation(id: Int, latitude: Double, longitude: Double, timestamp: Long)
 }

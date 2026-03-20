@@ -43,4 +43,22 @@ interface AttendanceDao {
 
     @Query("SELECT SUM(hoursWorked) FROM attendance_records WHERE employeeId = :employeeId AND checkInTime >= :startTime")
     fun getTotalHoursForEmployee(employeeId: Int, startTime: Long): Flow<Double?>
+
+    /**
+     * Insert an attendance record (alias used by AttendanceViewModel)
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAttendanceRecord(record: AttendanceRecord)
+
+    /**
+     * Get attendance record by ID (alias used by AttendanceViewModel)
+     */
+    @Query("SELECT * FROM attendance_records WHERE id = :id")
+    suspend fun getAttendanceRecordById(id: Int): AttendanceRecord?
+
+    /**
+     * Update an attendance record (alias used by AttendanceViewModel)
+     */
+    @Update
+    suspend fun updateAttendanceRecord(record: AttendanceRecord)
 }
