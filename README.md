@@ -31,26 +31,39 @@ This app follows the MVVM (Model-View-ViewModel) architecture pattern:
 - **Async**: Kotlin Coroutines & Flow
 - **DI**: Manual dependency injection
 
-## Getting Started
+## Install on Your Phone
 
-### Prerequisites
+The easiest way to install Farm Directory Pro on your Android device is to download the latest debug APK directly from GitHub Releases.
+
+### Download & Install (No computer needed)
+
+1. On your Android phone, go to the repository's **[Releases](../../releases)** page, open the **"Debug Build (Latest)"** pre-release, and download the latest `FarmDirectoryPro-debug-*.apk` file from the Assets section.
+2. Open **Settings → Security** (or **Apps → Special app access → Install unknown apps**) and enable **Install unknown apps** for your browser or file manager.
+3. Open the downloaded `.apk` file and tap **Install**.
+4. Once installed, open **Farm Directory Pro** from your app drawer.
+
+> **Tip:** You can also trigger a fresh build from the [Debug APK Distribution](../../actions/workflows/debug-distribution.yml) workflow by clicking **Run workflow**.
+
+### Building & Installing via ADB (Developers)
+
+#### Prerequisites
 - Android Studio Arctic Fox or newer
-- JDK 11 or higher
-- Android SDK 24+
+- JDK 17 or higher
+- Android SDK 26+
 
-### Building the Project
+#### Build the Project
 ```bash
-./gradlew assembleDebug
+./gradlew assembleProdDebug
 ```
 
-### Running Tests
+#### Run Tests
 ```bash
 ./gradlew test
 ```
 
-### Installing on Device
+#### Install Directly on a Connected Device
 ```bash
-./gradlew installDebug
+./gradlew installProdDebug
 ```
 
 ## Project Structure
