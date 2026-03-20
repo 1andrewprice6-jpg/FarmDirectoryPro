@@ -85,7 +85,7 @@
 -optimizationpasses 5
 -dontusemixedcaseclassnames
 -dontskipnonpubliclibraryclasses
--dontskipnonpubliclibraryinterfaces
+#-dontskipnonpubliclibraryinterfaces
 
 # Remove logging in release builds (optional - comment out if you want logs)
 -assumenosideeffects class android.util.Log {

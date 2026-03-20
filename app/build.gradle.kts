@@ -73,6 +73,12 @@ android {
     buildFeatures {
         buildConfig = true
     }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -162,6 +168,10 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.8")
     testImplementation("com.google.truth:truth:1.1.5")
     testImplementation("androidx.room:room-testing:2.6.1")
+    testImplementation("androidx.test.ext:junit:1.1.5")
+    testImplementation("androidx.test:core:1.5.0")
+    testImplementation("androidx.test:runner:1.5.2")
+    testImplementation("org.robolectric:robolectric:4.11.1")
 
     // Testing - Android Instrumented Tests
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

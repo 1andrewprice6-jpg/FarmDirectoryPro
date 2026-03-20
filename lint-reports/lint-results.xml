@@ -1,0 +1,844 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 8.5.0">
+
+    <issue
+        id="ScopedStorage"
+        severity="Warning"
+        message="READ_EXTERNAL_STORAGE is deprecated (and is not granted) when targeting Android 13+. If you need to query or interact with MediaStore or media files on the shared storage, you should instead use one or more new storage permissions: `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` or `READ_MEDIA_AUDIO`."
+        category="Correctness"
+        priority="8"
+        summary="Affected by scoped storage"
+        explanation="Scoped storage is enforced on Android 10+ (or Android 11+ if using `requestLegacyExternalStorage`). In particular, `WRITE_EXTERNAL_STORAGE` will no longer provide write access to all files; it will provide the equivalent of `READ_EXTERNAL_STORAGE` instead.&#xA;&#xA;As of Android 13, if you need to query or interact with MediaStore or media files on the shared storage, you should be using instead one or more new storage permissions:&#xA;* `android.permission.READ_MEDIA_IMAGES`&#xA;* `android.permission.READ_MEDIA_VIDEO`&#xA;* `android.permission.READ_MEDIA_AUDIO`&#xA;&#xA;and then add `maxSdkVersion=&quot;33&quot;` to the older permission. See the developer guide for how to do this: https://developer.android.com/about/versions/13/behavior-changes-13#granular-media-permissions&#xA;&#xA;The `MANAGE_EXTERNAL_STORAGE` permission can be used to manage all files, but it is rarely necessary and most apps on Google Play are not allowed to use it. Most apps should instead migrate to use scoped storage. To modify or delete files, apps should request write access from the user as described at https://goo.gle/android-mediastore-createwriterequest.&#xA;&#xA;To learn more, read these resources: Play policy: https://goo.gle/policy-storage-help Allowable use cases: https://goo.gle/policy-storage-usecases"
+        url="https://goo.gle/android-storage-usecases"
+        urls="https://goo.gle/android-storage-usecases"
+        errorLine1="    &lt;uses-permission android:name=&quot;android.permission.READ_EXTERNAL_STORAGE&quot; />"
+        errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/AndroidManifest.xml"
+            line="15"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="ScopedStorage"
+        severity="Warning"
+        message="WRITE_EXTERNAL_STORAGE is deprecated (and is not granted) when targeting Android 13+. If you need to write to shared storage, use the `MediaStore.createWriteRequest` intent."
+        category="Correctness"
+        priority="8"
+        summary="Affected by scoped storage"
+        explanation="Scoped storage is enforced on Android 10+ (or Android 11+ if using `requestLegacyExternalStorage`). In particular, `WRITE_EXTERNAL_STORAGE` will no longer provide write access to all files; it will provide the equivalent of `READ_EXTERNAL_STORAGE` instead.&#xA;&#xA;As of Android 13, if you need to query or interact with MediaStore or media files on the shared storage, you should be using instead one or more new storage permissions:&#xA;* `android.permission.READ_MEDIA_IMAGES`&#xA;* `android.permission.READ_MEDIA_VIDEO`&#xA;* `android.permission.READ_MEDIA_AUDIO`&#xA;&#xA;and then add `maxSdkVersion=&quot;33&quot;` to the older permission. See the developer guide for how to do this: https://developer.android.com/about/versions/13/behavior-changes-13#granular-media-permissions&#xA;&#xA;The `MANAGE_EXTERNAL_STORAGE` permission can be used to manage all files, but it is rarely necessary and most apps on Google Play are not allowed to use it. Most apps should instead migrate to use scoped storage. To modify or delete files, apps should request write access from the user as described at https://goo.gle/android-mediastore-createwriterequest.&#xA;&#xA;To learn more, read these resources: Play policy: https://goo.gle/policy-storage-help Allowable use cases: https://goo.gle/policy-storage-usecases"
+        url="https://goo.gle/android-storage-usecases"
+        urls="https://goo.gle/android-storage-usecases"
+        errorLine1="    &lt;uses-permission android:name=&quot;android.permission.WRITE_EXTERNAL_STORAGE&quot; />"
+        errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/AndroidManifest.xml"
+            line="16"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        severity="Warning"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        category="Correctness"
+        priority="6"
+        summary="Implied default locale in case conversion"
+        explanation="Calling `String#toLowerCase()` or `#toUpperCase()` **without specifying an explicit locale** is a common source of bugs. The reason for that is that those methods will use the current locale on the user&apos;s device, and even though the code appears to work correctly when you are developing the app, it will fail in some locales. For example, in the Turkish locale, the uppercase replacement for `i` is **not** `I`.&#xA;&#xA;If you want the methods to just perform ASCII replacement, for example to convert an enum name, call `String#toUpperCase(Locale.ROOT)` instead. If you really want to use the current locale, call `String#toUpperCase(Locale.getDefault())` instead."
+        url="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        urls="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        errorLine1="                                text = &quot;Latitude: ${String.format(&quot;%.6f&quot;, lat)}&quot;,"
+        errorLine2="                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/ui/AdvancedScreens.kt"
+            line="400"
+            column="53"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        severity="Warning"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        category="Correctness"
+        priority="6"
+        summary="Implied default locale in case conversion"
+        explanation="Calling `String#toLowerCase()` or `#toUpperCase()` **without specifying an explicit locale** is a common source of bugs. The reason for that is that those methods will use the current locale on the user&apos;s device, and even though the code appears to work correctly when you are developing the app, it will fail in some locales. For example, in the Turkish locale, the uppercase replacement for `i` is **not** `I`.&#xA;&#xA;If you want the methods to just perform ASCII replacement, for example to convert an enum name, call `String#toUpperCase(Locale.ROOT)` instead. If you really want to use the current locale, call `String#toUpperCase(Locale.getDefault())` instead."
+        url="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        urls="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        errorLine1="                                text = &quot;Longitude: ${String.format(&quot;%.6f&quot;, lon)}&quot;,"
+        errorLine2="                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/ui/AdvancedScreens.kt"
+            line="404"
+            column="54"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        severity="Warning"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        category="Correctness"
+        priority="6"
+        summary="Implied default locale in case conversion"
+        explanation="Calling `String#toLowerCase()` or `#toUpperCase()` **without specifying an explicit locale** is a common source of bugs. The reason for that is that those methods will use the current locale on the user&apos;s device, and even though the code appears to work correctly when you are developing the app, it will fail in some locales. For example, in the Turkish locale, the uppercase replacement for `i` is **not** `I`.&#xA;&#xA;If you want the methods to just perform ASCII replacement, for example to convert an enum name, call `String#toUpperCase(Locale.ROOT)` instead. If you really want to use the current locale, call `String#toUpperCase(Locale.getDefault())` instead."
+        url="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        urls="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        errorLine1="                                text = &quot;Distance: ${String.format(&quot;%.2f&quot;, result.distance)} km&quot;,"
+        errorLine2="                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/ui/AdvancedScreens.kt"
+            line="438"
+            column="53"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        severity="Warning"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        category="Correctness"
+        priority="6"
+        summary="Implied default locale in case conversion"
+        explanation="Calling `String#toLowerCase()` or `#toUpperCase()` **without specifying an explicit locale** is a common source of bugs. The reason for that is that those methods will use the current locale on the user&apos;s device, and even though the code appears to work correctly when you are developing the app, it will fail in some locales. For example, in the Turkish locale, the uppercase replacement for `i` is **not** `I`.&#xA;&#xA;If you want the methods to just perform ASCII replacement, for example to convert an enum name, call `String#toUpperCase(Locale.ROOT)` instead. If you really want to use the current locale, call `String#toUpperCase(Locale.getDefault())` instead."
+        url="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        urls="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        errorLine1="                                text = &quot;Confidence: ${String.format(&quot;%.1f&quot;, result.confidence)}%&quot;,"
+        errorLine2="                                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/ui/AdvancedScreens.kt"
+            line="442"
+            column="55"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        severity="Warning"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        category="Correctness"
+        priority="6"
+        summary="Implied default locale in case conversion"
+        explanation="Calling `String#toLowerCase()` or `#toUpperCase()` **without specifying an explicit locale** is a common source of bugs. The reason for that is that those methods will use the current locale on the user&apos;s device, and even though the code appears to work correctly when you are developing the app, it will fail in some locales. For example, in the Turkish locale, the uppercase replacement for `i` is **not** `I`.&#xA;&#xA;If you want the methods to just perform ASCII replacement, for example to convert an enum name, call `String#toUpperCase(Locale.ROOT)` instead. If you really want to use the current locale, call `String#toUpperCase(Locale.getDefault())` instead."
+        url="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        urls="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        errorLine1="                                        text = &quot;${alt.farmName} (${String.format(&quot;%.2f&quot;, alt.distance)} km)&quot;,"
+        errorLine2="                                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/ui/AdvancedScreens.kt"
+            line="457"
+            column="68"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        severity="Warning"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        category="Correctness"
+        priority="6"
+        summary="Implied default locale in case conversion"
+        explanation="Calling `String#toLowerCase()` or `#toUpperCase()` **without specifying an explicit locale** is a common source of bugs. The reason for that is that those methods will use the current locale on the user&apos;s device, and even though the code appears to work correctly when you are developing the app, it will fail in some locales. For example, in the Turkish locale, the uppercase replacement for `i` is **not** `I`.&#xA;&#xA;If you want the methods to just perform ASCII replacement, for example to convert an enum name, call `String#toUpperCase(Locale.ROOT)` instead. If you really want to use the current locale, call `String#toUpperCase(Locale.getDefault())` instead."
+        url="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        urls="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        errorLine1="                            Text(&quot;Total Distance: ${String.format(&quot;%.1f&quot;, route.totalDistance)} km&quot;)"
+        errorLine2="                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/ui/AdvancedScreens.kt"
+            line="672"
+            column="53"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        severity="Warning"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        category="Correctness"
+        priority="6"
+        summary="Implied default locale in case conversion"
+        explanation="Calling `String#toLowerCase()` or `#toUpperCase()` **without specifying an explicit locale** is a common source of bugs. The reason for that is that those methods will use the current locale on the user&apos;s device, and even though the code appears to work correctly when you are developing the app, it will fail in some locales. For example, in the Turkish locale, the uppercase replacement for `i` is **not** `I`.&#xA;&#xA;If you want the methods to just perform ASCII replacement, for example to convert an enum name, call `String#toUpperCase(Locale.ROOT)` instead. If you really want to use the current locale, call `String#toUpperCase(Locale.getDefault())` instead."
+        url="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        urls="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        errorLine1="                            Text(&quot;Estimated Fuel Cost: $${String.format(&quot;%.2f&quot;, route.fuelCost)}&quot;)"
+        errorLine2="                                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/ui/AdvancedScreens.kt"
+            line="674"
+            column="59"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        severity="Warning"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        category="Correctness"
+        priority="6"
+        summary="Implied default locale in case conversion"
+        explanation="Calling `String#toLowerCase()` or `#toUpperCase()` **without specifying an explicit locale** is a common source of bugs. The reason for that is that those methods will use the current locale on the user&apos;s device, and even though the code appears to work correctly when you are developing the app, it will fail in some locales. For example, in the Turkish locale, the uppercase replacement for `i` is **not** `I`.&#xA;&#xA;If you want the methods to just perform ASCII replacement, for example to convert an enum name, call `String#toUpperCase(Locale.ROOT)` instead. If you really want to use the current locale, call `String#toUpperCase(Locale.getDefault())` instead."
+        url="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        urls="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        errorLine1="                    _successMessage.value = &quot;Check-out recorded (${String.format(&quot;%.1f&quot;, hoursWorked)} hours)&quot;"
+        errorLine2="                                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/AttendanceViewModel.kt"
+            line="204"
+            column="68"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        severity="Warning"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        category="Correctness"
+        priority="6"
+        summary="Implied default locale in case conversion"
+        explanation="Calling `String#toLowerCase()` or `#toUpperCase()` **without specifying an explicit locale** is a common source of bugs. The reason for that is that those methods will use the current locale on the user&apos;s device, and even though the code appears to work correctly when you are developing the app, it will fail in some locales. For example, in the Turkish locale, the uppercase replacement for `i` is **not** `I`.&#xA;&#xA;If you want the methods to just perform ASCII replacement, for example to convert an enum name, call `String#toUpperCase(Locale.ROOT)` instead. If you really want to use the current locale, call `String#toUpperCase(Locale.getDefault())` instead."
+        url="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        urls="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        errorLine1="                        text = &quot;GPS: ${String.format(&quot;%.4f&quot;, farmer.latitude)}, ${String.format(&quot;%.4f&quot;, farmer.longitude)}&quot;,"
+        errorLine2="                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/MainActivity.kt"
+            line="731"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        severity="Warning"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        category="Correctness"
+        priority="6"
+        summary="Implied default locale in case conversion"
+        explanation="Calling `String#toLowerCase()` or `#toUpperCase()` **without specifying an explicit locale** is a common source of bugs. The reason for that is that those methods will use the current locale on the user&apos;s device, and even though the code appears to work correctly when you are developing the app, it will fail in some locales. For example, in the Turkish locale, the uppercase replacement for `i` is **not** `I`.&#xA;&#xA;If you want the methods to just perform ASCII replacement, for example to convert an enum name, call `String#toUpperCase(Locale.ROOT)` instead. If you really want to use the current locale, call `String#toUpperCase(Locale.getDefault())` instead."
+        url="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        urls="https://developer.android.com/reference/java/util/Locale.html#default_locale"
+        errorLine1="                        text = &quot;GPS: ${String.format(&quot;%.4f&quot;, farmer.latitude)}, ${String.format(&quot;%.4f&quot;, farmer.longitude)}&quot;,"
+        errorLine2="                                                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/MainActivity.kt"
+            line="731"
+            column="83"/>
+    </issue>
+
+    <issue
+        id="OldTargetApi"
+        severity="Warning"
+        message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details."
+        category="Correctness"
+        priority="6"
+        summary="Target SDK attribute is not targeting latest version"
+        explanation="When your application runs on a version of Android that is more recent than your `targetSdkVersion` specifies that it has been tested with, various compatibility modes kick in. This ensures that your application continues to work, but it may look out of place. For example, if the `targetSdkVersion` is less than 14, your app may get an option button in the UI.&#xA;&#xA;To fix this issue, set the `targetSdkVersion` to the highest available value. Then test your app to make sure everything works correctly. You may want to consult the compatibility notes to see what changes apply to each version you are adding support for: https://developer.android.com/reference/android/os/Build.VERSION_CODES.html as well as follow this guide:&#xA;https://developer.android.com/distribute/best-practices/develop/target-sdk.html"
+        url="https://developer.android.com/distribute/best-practices/develop/target-sdk.html"
+        urls="https://developer.android.com/distribute/best-practices/develop/target-sdk.html,https://developer.android.com/reference/android/os/Build.VERSION_CODES.html"
+        errorLine1="        targetSdk = 34"
+        errorLine2="        ~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/build.gradle.kts"
+            line="16"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        severity="Warning"
+        message="A newer version of io.socket:socket.io-client than 2.1.0 is available: 2.1.2"
+        category="Correctness"
+        priority="4"
+        summary="Newer Library Versions Available"
+        explanation="This detector checks with a central repository to see if there are newer versions available for the dependencies used by this project. This is similar to the `GradleDependency` check, which checks for newer versions available in the Android SDK tools and libraries, but this works with any MavenCentral dependency, and connects to the library every time, which makes it more flexible but also **much** slower."
+        errorLine1="    implementation(&quot;io.socket:socket.io-client:2.1.0&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/build.gradle.kts"
+            line="133"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        severity="Warning"
+        message="A newer version of com.google.code.gson:gson than 2.10.1 is available: 2.13.1"
+        category="Correctness"
+        priority="4"
+        summary="Newer Library Versions Available"
+        explanation="This detector checks with a central repository to see if there are newer versions available for the dependencies used by this project. This is similar to the `GradleDependency` check, which checks for newer versions available in the Android SDK tools and libraries, but this works with any MavenCentral dependency, and connects to the library every time, which makes it more flexible but also **much** slower."
+        errorLine1="    implementation(&quot;com.google.code.gson:gson:2.10.1&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/build.gradle.kts"
+            line="140"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        severity="Warning"
+        message="A newer version of io.coil-kt:coil-compose than 2.5.0 is available: 2.7.0"
+        category="Correctness"
+        priority="4"
+        summary="Newer Library Versions Available"
+        explanation="This detector checks with a central repository to see if there are newer versions available for the dependencies used by this project. This is similar to the `GradleDependency` check, which checks for newer versions available in the Android SDK tools and libraries, but this works with any MavenCentral dependency, and connects to the library every time, which makes it more flexible but also **much** slower."
+        errorLine1="    implementation(&quot;io.coil-kt:coil-compose:2.5.0&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/build.gradle.kts"
+            line="155"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        severity="Warning"
+        message="A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-test than 1.7.3 is available: 1.10.2"
+        category="Correctness"
+        priority="4"
+        summary="Newer Library Versions Available"
+        explanation="This detector checks with a central repository to see if there are newer versions available for the dependencies used by this project. This is similar to the `GradleDependency` check, which checks for newer versions available in the Android SDK tools and libraries, but this works with any MavenCentral dependency, and connects to the library every time, which makes it more flexible but also **much** slower."
+        errorLine1="    testImplementation(&quot;org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3&quot;)"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/build.gradle.kts"
+            line="160"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        severity="Warning"
+        message="A newer version of io.mockk:mockk than 1.13.8 is available: 1.14.3"
+        category="Correctness"
+        priority="4"
+        summary="Newer Library Versions Available"
+        explanation="This detector checks with a central repository to see if there are newer versions available for the dependencies used by this project. This is similar to the `GradleDependency` check, which checks for newer versions available in the Android SDK tools and libraries, but this works with any MavenCentral dependency, and connects to the library every time, which makes it more flexible but also **much** slower."
+        errorLine1="    testImplementation(&quot;io.mockk:mockk:1.13.8&quot;)"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/build.gradle.kts"
+            line="162"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        severity="Warning"
+        message="A newer version of com.google.truth:truth than 1.1.5 is available: 1.4.4"
+        category="Correctness"
+        priority="4"
+        summary="Newer Library Versions Available"
+        explanation="This detector checks with a central repository to see if there are newer versions available for the dependencies used by this project. This is similar to the `GradleDependency` check, which checks for newer versions available in the Android SDK tools and libraries, but this works with any MavenCentral dependency, and connects to the library every time, which makes it more flexible but also **much** slower."
+        errorLine1="    testImplementation(&quot;com.google.truth:truth:1.1.5&quot;)"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/build.gradle.kts"
+            line="163"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        severity="Warning"
+        message="A newer version of io.mockk:mockk-android than 1.13.8 is available: 1.14.3"
+        category="Correctness"
+        priority="4"
+        summary="Newer Library Versions Available"
+        explanation="This detector checks with a central repository to see if there are newer versions available for the dependencies used by this project. This is similar to the `GradleDependency` check, which checks for newer versions available in the Android SDK tools and libraries, but this works with any MavenCentral dependency, and connects to the library every time, which makes it more flexible but also **much** slower."
+        errorLine1="    androidTestImplementation(&quot;io.mockk:mockk-android:1.13.8&quot;)"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/build.gradle.kts"
+            line="174"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        severity="Error"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.camera.core.ExperimentalGetImage` or `@OptIn(markerClass = androidx.camera.core.ExperimentalGetImage.class)`"
+        category="Correctness"
+        priority="4"
+        summary="Unsafe opt-in usage intended to be error-level severity"
+        explanation="This API has been flagged as opt-in with error-level severity.&#xA;&#xA;Any declaration annotated with this marker is considered part of an unstable or&#xA;otherwise non-standard API surface and its call sites should accept the opt-in&#xA;aspect of it by using the `@OptIn` annotation, using the marker annotation --&#xA;effectively causing further propagation of the opt-in aspect -- or configuring&#xA;the `UnsafeOptInUsageError` check&apos;s options for project-wide opt-in.&#xA;&#xA;To configure project-wide opt-in, specify the `opt-in` option value in `lint.xml`&#xA;as a comma-delimited list of opted-in annotations:&#xA;&#xA;```&#xA;&lt;lint>&#xA;    &lt;issue id=&quot;UnsafeOptInUsageError&quot;>&#xA;        &lt;option name=&quot;opt-in&quot; value=&quot;com.foo.ExperimentalBarAnnotation&quot; />&#xA;    &lt;/issue>&#xA;&lt;/lint>&#xA;```"
+        errorLine1="                        val mediaImage = imageProxy.image"
+        errorLine2="                                                    ~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/ui/CameraCaptureKt.kt"
+            line="205"
+            column="53"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        severity="Warning"
+        message="This folder configuration (`v26`) is unnecessary; `minSdkVersion` is 26. Merge all the resources in this folder into `mipmap-anydpi`."
+        category="Performance"
+        priority="6"
+        summary="Obsolete SDK_INT Version Check"
+        explanation="This check flags version checks that are not necessary, because the `minSdkVersion` (or surrounding known API level) is already at least as high as the version checked for.&#xA;&#xA;Similarly, it also looks for resources in `-vNN` folders, such as `values-v14` where the version qualifier is less than or equal to the `minSdkVersion`, where the contents should be merged into the best folder.">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/res/mipmap-anydpi-v26"/>
+    </issue>
+
+    <issue
+        id="StaticFieldLeak"
+        severity="Warning"
+        message="This field leaks a context object"
+        category="Performance"
+        priority="6"
+        summary="Static Field Leaks"
+        explanation="A static field will leak contexts.&#xA;&#xA;Non-static inner classes have an implicit reference to their outer class. If that outer class is for example a `Fragment` or `Activity`, then this reference means that the long-running handler/loader/task will hold a reference to the activity which prevents it from getting garbage collected.&#xA;&#xA;Similarly, direct field references to activities and fragments from these longer running instances can cause leaks.&#xA;&#xA;ViewModel classes should never point to Views or non-application Contexts."
+        errorLine1="    private val context: Context,"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/FarmerListViewModel.kt"
+            line="38"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="StaticFieldLeak"
+        severity="Warning"
+        message="This field leaks a context object"
+        category="Performance"
+        priority="6"
+        summary="Static Field Leaks"
+        explanation="A static field will leak contexts.&#xA;&#xA;Non-static inner classes have an implicit reference to their outer class. If that outer class is for example a `Fragment` or `Activity`, then this reference means that the long-running handler/loader/task will hold a reference to the activity which prevents it from getting garbage collected.&#xA;&#xA;Similarly, direct field references to activities and fragments from these longer running instances can cause leaks.&#xA;&#xA;ViewModel classes should never point to Views or non-application Contexts."
+        errorLine1="    private val context: Context,"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/LogViewModel.kt"
+            line="29"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="                Log.d(TAG, &quot;Employee $employeeId checked in at ($latitude, $longitude)&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/AttendanceViewModel.kt"
+            line="124"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="                Log.d(TAG, &quot;Employee ${parsed.employeeId} checked in via QR code&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/AttendanceViewModel.kt"
+            line="166"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="                Log.d(TAG, &quot;Employee added: ${employee.name}&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/AttendanceViewModel.kt"
+            line="227"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="                Log.d(TAG, &quot;Employee updated: ${employee.name}&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/AttendanceViewModel.kt"
+            line="246"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="                                    Log.d(&quot;CameraCapture&quot;, &quot;Recognized text: $recognizedText&quot;)"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/ui/CameraCaptureKt.kt"
+            line="217"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="        Log.d(TAG, &quot;Scheduling reconnection attempt #$reconnectionAttempts in ${nextDelay}ms&quot;)"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/data/FarmWebSocketService.kt"
+            line="144"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="            Log.d(TAG, &quot;Sent event: $eventName&quot;)"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/data/FarmWebSocketService.kt"
+            line="243"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="                Log.d(TAG, &quot;Farmer added: ${farmer.name}&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/FarmerListViewModel.kt"
+            line="119"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="                Log.d(TAG, &quot;Farmer updated: ${farmer.name}&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/FarmerListViewModel.kt"
+            line="138"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="                Log.d(TAG, &quot;Farmer deleted: ${farmer.name}&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/FarmerListViewModel.kt"
+            line="157"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="                Log.d(TAG, &quot;Farmer ${farmer.id} favorite toggled&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/FarmerListViewModel.kt"
+            line="173"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="                Log.d(TAG, &quot;Farmer $farmerId location updated to ($latitude, $longitude)&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/LocationViewModel.kt"
+            line="78"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="                Log.d(TAG, &quot;Employee $employeeId location updated to ($latitude, $longitude)&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/LocationViewModel.kt"
+            line="103"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="                Log.d(TAG, &quot;Route optimized: ${optimizedList.size} farmers, ${String.format(&quot;%.2f&quot;, totalDistance)} km&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/LocationViewModel.kt"
+            line="182"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="                Log.d(TAG, &quot;Connection state changed: $state&quot;)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/WebSocketViewModel.kt"
+            line="62"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="        Log.d(TAG, &quot;Connecting to backend for farm $farmId, worker $workerId&quot;)"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/WebSocketViewModel.kt"
+            line="90"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="        Log.d(TAG, &quot;Joined farm $farmId&quot;)"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/WebSocketViewModel.kt"
+            line="114"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="        Log.d(TAG, &quot;Left farm $farmId&quot;)"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/WebSocketViewModel.kt"
+            line="122"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="        Log.d(TAG, &quot;Sent location update: ($latitude, $longitude)&quot;)"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/WebSocketViewModel.kt"
+            line="133"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="LogConditional"
+        severity="Warning"
+        message="The log call Log.d(...) should be conditional: surround with `if (Log.isLoggable(...))` or `if (BuildConfig.DEBUG) { ... }`"
+        category="Performance"
+        priority="5"
+        summary="Unconditional Logging Calls"
+        explanation="The `BuildConfig` class provides a constant, `DEBUG`, which indicates whether the code is being built in release mode or in debug mode. In release mode, you typically want to strip out all the logging calls. Since the compiler will automatically remove all code which is inside a `if (false)` check, surrounding your logging calls with a check for `BuildConfig.DEBUG` is a good idea.&#xA;&#xA;If you **really** intend for the logging to be present in release mode, you can suppress this warning with a `@SuppressLint` annotation for the intentional logging calls."
+        errorLine1="        Log.d(TAG, &quot;Sent health update: $status&quot;)"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/viewmodel/WebSocketViewModel.kt"
+            line="144"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="KaptUsageInsteadOfKsp"
+        severity="Warning"
+        message="This library supports using KSP instead of kapt, which greatly improves performance. Learn more: https://developer.android.com/studio/build/migrate-to-ksp"
+        category="Performance"
+        priority="4"
+        summary="Kapt usage should be replaced with KSP"
+        explanation="KSP is a more efficient replacement for kapt. For libraries that support both, KSP should be used to improve build times."
+        url="https://developer.android.com/studio/build/migrate-to-ksp"
+        urls="https://developer.android.com/studio/build/migrate-to-ksp"
+        errorLine1="    kapt(&quot;androidx.room:room-compiler:2.6.1&quot;)"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/build.gradle.kts"
+            line="122"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        severity="Warning"
+        message="The resource `R.color.blue_dark` appears to be unused"
+        category="Performance"
+        priority="3"
+        summary="Unused resources"
+        explanation="Unused resources make applications larger and slow down builds.&#xA;&#xA;&#xA;The unused resource check can ignore tests. If you want to include resources that are only referenced from tests, consider packaging them in a test source set instead.&#xA;&#xA;You can include test sources in the unused resource check by setting the system property lint.unused-resources.include-tests =true, and to exclude them (usually for performance reasons), use lint.unused-resources.exclude-tests =true.&#xA;,"
+        errorLine1="    &lt;color name=&quot;blue_dark&quot;>#FF303F9F&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/res/values/colors.xml"
+            line="4"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        severity="Warning"
+        message="The resource `R.color.white` appears to be unused"
+        category="Performance"
+        priority="3"
+        summary="Unused resources"
+        explanation="Unused resources make applications larger and slow down builds.&#xA;&#xA;&#xA;The unused resource check can ignore tests. If you want to include resources that are only referenced from tests, consider packaging them in a test source set instead.&#xA;&#xA;You can include test sources in the unused resource check by setting the system property lint.unused-resources.include-tests =true, and to exclude them (usually for performance reasons), use lint.unused-resources.exclude-tests =true.&#xA;,"
+        errorLine1="    &lt;color name=&quot;white&quot;>#FFFFFFFF&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/res/values/colors.xml"
+            line="5"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        severity="Warning"
+        message="Access to `private` method `processImageWithOCR` of class `CameraCaptureKt` requires synthetic accessor"
+        category="Performance"
+        priority="2"
+        summary="Synthetic Accessor"
+        explanation="A private inner class which is accessed from the outer class will force the compiler to insert a synthetic accessor; this means that you are causing extra overhead. This is not important in small projects, but is important for large apps running up against the 64K method handle limit, and especially for **libraries** where you want to make sure your library is as small as possible for the cases where your library is used in an app running up against the 64K limit."
+        errorLine1="                processImageWithOCR("
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/ui/CameraCapture.kt"
+            line="274"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="SyntheticAccessor"
+        severity="Warning"
+        message="Access to `private` method `populateDatabase` of class `Companion` requires synthetic accessor"
+        category="Performance"
+        priority="2"
+        summary="Synthetic Accessor"
+        explanation="A private inner class which is accessed from the outer class will force the compiler to insert a synthetic accessor; this means that you are causing extra overhead. This is not important in small projects, but is important for large apps running up against the 64K method handle limit, and especially for **libraries** where you want to make sure your library is as small as possible for the cases where your library is used in an app running up against the 64K limit."
+        errorLine1="                                    populateDatabase(database.farmerDao())"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/java/com/example/farmdirectoryupgraded/data/FarmDatabase.kt"
+            line="49"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="MonochromeLauncherIcon"
+        severity="Warning"
+        message="The application adaptive icon is missing a monochrome tag"
+        category="Usability:Icons"
+        priority="6"
+        summary="Monochrome icon is not defined"
+        explanation="If `android:roundIcon` and `android:icon` are both in your manifest, you must either remove the reference to `android:roundIcon` if it is not needed; or, supply the monochrome icon in the drawable defined by the `android:roundIcon` and `android:icon` attribute.&#xA;&#xA;For example, if `android:roundIcon` and `android:icon` are both in the manifest, a launcher might choose to use `android:roundIcon` over `android:icon` to display the adaptive app icon. Therefore, your themed application iconwill not show if your monochrome attribute is not also specified in `android:roundIcon`."
+        errorLine1="&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
+        errorLine2="^">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="MonochromeLauncherIcon"
+        severity="Warning"
+        message="The application adaptive roundIcon is missing a monochrome tag"
+        category="Usability:Icons"
+        priority="6"
+        summary="Monochrome icon is not defined"
+        explanation="If `android:roundIcon` and `android:icon` are both in your manifest, you must either remove the reference to `android:roundIcon` if it is not needed; or, supply the monochrome icon in the drawable defined by the `android:roundIcon` and `android:icon` attribute.&#xA;&#xA;For example, if `android:roundIcon` and `android:icon` are both in the manifest, a launcher might choose to use `android:roundIcon` over `android:icon` to display the adaptive app icon. Therefore, your themed application iconwill not show if your monochrome attribute is not also specified in `android:roundIcon`."
+        errorLine1="&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
+        errorLine2="^">
+        <location
+            file="/home/runner/work/FarmDirectoryPro/FarmDirectoryPro/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+</issues>

@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:2:1-64:12
-INJECTED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:2:1-64:12
-INJECTED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:2:1-64:12
-INJECTED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:2:1-64:12
+ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:2:1-63:12
+INJECTED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:2:1-63:12
+INJECTED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:2:1-63:12
+INJECTED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:2:1-63:12
 MERGED from [androidx.camera:camera-video:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-4/fd5e61f6e0658949774c17223ad014ad/transformed/jetified-camera-video-1.3.1/AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.camera:camera-view:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-4/aee70e3d9d13e30710ec350d85f8a4cc/transformed/jetified-camera-view-1.3.1/AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.camera:camera-lifecycle:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-4/630b340bce970c7601fb554675f55efb/transformed/jetified-camera-lifecycle-1.3.1/AndroidManifest.xml:2:1-7:12
@@ -184,8 +184,8 @@ ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/A
 	android:name
 		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:36:9-53
 application
-ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:39:5-62:19
-INJECTED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:39:5-62:19
+ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:39:5-61:19
+INJECTED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:39:5-61:19
 MERGED from [androidx.camera:camera-camera2:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-4/fc2205e433d9efeca983acbb6230dad5/transformed/jetified-camera-camera2-1.3.1/AndroidManifest.xml:23:5-34:19
 MERGED from [androidx.camera:camera-camera2:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-4/fc2205e433d9efeca983acbb6230dad5/transformed/jetified-camera-camera2-1.3.1/AndroidManifest.xml:23:5-34:19
 MERGED from [androidx.camera:camera-core:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-4/c8a6d49ae36ff7f855b8a6406fd76d09/transformed/jetified-camera-core-1.3.1/AndroidManifest.xml:23:5-34:19
@@ -230,50 +230,48 @@ MERGED from [com.google.android.odml:image:1.0.0-beta1] /data/data/com.termux/fi
 MERGED from [com.google.android.odml:image:1.0.0-beta1] /data/data/com.termux/files/home/.gradle/caches/transforms-4/f53087f35a7c469d8fb452f1f26911af/transformed/jetified-image-1.0.0-beta1/AndroidManifest.xml:7:5-20
 	android:extractNativeLibs
 		INJECTED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml
-	android:roundIcon
-		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:46:9-54
-	android:icon
-		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:44:9-43
-	android:networkSecurityConfig
-		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:50:9-69
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.12.0] /data/data/com.termux/files/home/.gradle/caches/transforms-4/8b3e9d20a8b770a8d6cd4f0ac628f1c2/transformed/core-1.12.0/AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:47:9-35
+		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:46:9-35
 	android:label
-		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:45:9-41
+		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:44:9-41
 	android:fullBackupContent
-		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:43:9-54
-	android:debuggable
-		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:42:9-35
+		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:42:9-54
+	android:roundIcon
+		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:45:9-54
 	tools:targetApi
-		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:51:9-29
+		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:50:9-29
+	android:icon
+		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:43:9-43
 	android:allowBackup
 		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:40:9-35
 	android:theme
-		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:48:9-52
+		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:47:9-52
+	android:networkSecurityConfig
+		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:49:9-69
 	android:dataExtractionRules
 		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:41:9-65
 	android:usesCleartextTraffic
-		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:49:9-45
+		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:48:9-45
 activity#com.example.farmdirectoryupgraded.MainActivity
-ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:53:9-61:20
+ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:52:9-60:20
 	android:exported
-		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:55:13-36
+		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:54:13-36
 	android:theme
-		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:56:13-56
+		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:55:13-56
 	android:name
-		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:54:13-41
+		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:53:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:57:13-60:29
+ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:56:13-59:29
 action#android.intent.action.MAIN
-ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:58:17-69
+ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:57:17-69
 	android:name
-		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:58:25-66
+		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:57:25-66
 category#android.intent.category.LAUNCHER
-ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:59:17-77
+ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:58:17-77
 	android:name
-		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:59:27-74
+		ADDED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml:58:27-74
 uses-sdk
 INJECTED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /data/data/com.termux/files/home/FarmDirectoryPro_repo/app/src/main/AndroidManifest.xml
