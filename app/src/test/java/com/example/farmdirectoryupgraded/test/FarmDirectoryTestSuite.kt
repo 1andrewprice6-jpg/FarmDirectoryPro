@@ -5,10 +5,16 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.example.farmdirectoryupgraded.data.*
+import com.example.farmdirectoryupgraded.data.AttendanceDao
+import com.example.farmdirectoryupgraded.data.AttendanceRecord
+import com.example.farmdirectoryupgraded.data.Employee
+import com.example.farmdirectoryupgraded.data.EmployeeDao
+import com.example.farmdirectoryupgraded.data.FarmDatabase
+import com.example.farmdirectoryupgraded.data.Farmer
+import com.example.farmdirectoryupgraded.data.FarmerDao
 import com.example.farmdirectoryupgraded.utils.ValidationUtils
-import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
 import com.example.farmdirectoryupgraded.viewmodel.AttendanceViewModel
+import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
@@ -23,8 +29,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+
 
 /**
  * Unit Tests for FarmDirectoryPro Application
@@ -227,7 +233,7 @@ class AttendanceViewModelTest {
     @Test
     fun testCheckInWithGPS() = runTest {
         coEvery { employeeDao.getEmployeeById(1) } returns Employee(1, "John Doe", "Worker")
-        coEvery { attendanceDao.insertAttendanceRecord(any()) } returns Unit
+        coEvery { attendanceDao.insertAttendanceRecord(any()) } returns 1L
 
         viewModel.checkInWithGPS(
             employeeId = 1,
@@ -248,7 +254,7 @@ class AttendanceViewModelTest {
             employeeId = 1,
             employeeName = "John Doe",
             method = "GPS",
-            checkInTime = System.currentTimeMillis() - 3600000  // 1 hour ago
+            checkInTime = System.currentTimeMillis() - 3600000 // 1 hour ago
         )
         coEvery { attendanceDao.getAttendanceRecordById(1) } returns record
         coEvery { attendanceDao.updateAttendanceRecord(any()) } returns Unit
@@ -280,10 +286,12 @@ class LocationViewModelTest {
     fun testCalculateHaversineDistance() {
         // Test distance between two known points
         val distance = viewModel.calculateHaversineDistance(
-            35.7796, -81.3361,  // Hiddenite, NC
-            35.7850, -81.3400   // ~1km away
+            35.7796,
+            -81.3361, // Hiddenite, NC
+            35.7850,
+            -81.3400 // ~1km away
         )
-        assertTrue(distance in 0.9..1.2)  // Should be approximately 1km
+        assertTrue(distance in 0.9..1.2) // Should be approximately 1km
     }
 
     @Test
@@ -329,7 +337,7 @@ class ValidationUtilsTest {
     @Test
     fun testEmptyEmailIsValid() {
         val result = ValidationUtils.validateEmail("")
-        assertTrue(result.isValid)  // Optional field
+        assertTrue(result.isValid) // Optional field
     }
 
     @Test

@@ -55,6 +55,7 @@ import java.util.concurrent.Executors
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
+
 @Composable
 fun CameraCapture(
     onTextCaptured: (String) -> Unit,

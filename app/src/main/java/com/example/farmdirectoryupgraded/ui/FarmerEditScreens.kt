@@ -50,6 +50,7 @@ import com.example.farmdirectoryupgraded.data.Farmer
 import com.example.farmdirectoryupgraded.utils.SanitizationUtils
 import com.example.farmdirectoryupgraded.utils.ValidationUtils
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddFarmerScreen(
