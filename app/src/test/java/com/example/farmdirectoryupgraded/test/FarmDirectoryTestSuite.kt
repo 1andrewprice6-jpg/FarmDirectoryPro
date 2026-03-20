@@ -1,5 +1,6 @@
 package com.example.farmdirectoryupgraded.test
 
+import android.content.Context
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -12,6 +13,7 @@ import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -103,7 +105,7 @@ class FarmDatabaseTest {
     }
 
     @Test
-    fun testToggleFavoriteSatus() = runTest {
+    fun testToggleFavoriteStatus() = runTest {
         val farmer = Farmer(
             name = "John Doe",
             address = "123 Farm Lane",
@@ -112,7 +114,7 @@ class FarmDatabaseTest {
             isFavorite = false
         )
         farmerDao.insertFarmer(farmer)
-        farmerDao.updateFavoriteSatus(1, true)
+        farmerDao.updateFavoriteStatus(1, true)
         val retrieved = farmerDao.getFarmerById(1)
         assertTrue(retrieved?.isFavorite ?: false)
     }
@@ -134,7 +136,7 @@ class FarmDatabaseTest {
         farmerDao.insertFarmer(farmer1)
         farmerDao.insertFarmer(farmer2)
 
-        val results = farmerDao.searchFarmers("John")
+        val results = farmerDao.searchFarmers("John").first()
         assertEquals(1, results.size)
         assertEquals("John Doe", results[0].name)
     }
@@ -151,12 +153,13 @@ class FarmerListViewModelTest {
     val instantExecutorRule = InstantTaskExecutorRule()
 
     private val farmerDao = mockk<FarmerDao>()
+    private val context = mockk<Context>(relaxed = true)
     private lateinit var viewModel: FarmerListViewModel
 
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
-        viewModel = FarmerListViewModel(farmerDao)
+        viewModel = FarmerListViewModel(context, farmerDao)
     }
 
     @Test
@@ -188,9 +191,17 @@ class FarmerListViewModelTest {
 
     @Test
     fun testToggleFavorite() = runTest {
-        coEvery { farmerDao.updateFavoriteSatus(1, true) } returns Unit
+        val farmer = Farmer(
+            id = 1,
+            name = "Test Farmer",
+            address = "Test Address",
+            phone = "(828) 123-4567",
+            type = "Pullet",
+            isFavorite = false
+        )
+        coEvery { farmerDao.updateFavoriteStatus(1, true) } returns Unit
 
-        viewModel.toggleFavorite(1, false)
+        viewModel.toggleFavorite(farmer)
         // Verify no error message
         assert(viewModel.errorMessage.value == null)
     }
@@ -215,6 +226,7 @@ class AttendanceViewModelTest {
 
     @Test
     fun testCheckInWithGPS() = runTest {
+        coEvery { employeeDao.getEmployeeById(1) } returns Employee(1, "John Doe", "Worker")
         coEvery { attendanceDao.insertAttendanceRecord(any()) } returns Unit
 
         viewModel.checkInWithGPS(
@@ -234,6 +246,7 @@ class AttendanceViewModelTest {
         val record = AttendanceRecord(
             id = 1,
             employeeId = 1,
+            employeeName = "John Doe",
             method = "GPS",
             checkInTime = System.currentTimeMillis() - 3600000  // 1 hour ago
         )

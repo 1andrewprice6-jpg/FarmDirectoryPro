@@ -495,10 +495,11 @@ fun ImportRecordCard(record: ImportRecord) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (record.success)
+            containerColor = if (record.success) {
                 MaterialTheme.colorScheme.primaryContainer
-            else
+            } else {
                 MaterialTheme.colorScheme.errorContainer
+            }
         )
     ) {
         Row(
@@ -510,10 +511,11 @@ fun ImportRecordCard(record: ImportRecord) {
             Icon(
                 if (record.success) Icons.Default.CheckCircle else Icons.Default.Error,
                 contentDescription = null,
-                tint = if (record.success)
+                tint = if (record.success) {
                     MaterialTheme.colorScheme.onPrimaryContainer
-                else
+                } else {
                     MaterialTheme.colorScheme.onErrorContainer
+                }
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {

@@ -153,8 +153,10 @@ class LocationViewModel(
                     for (i in remaining.indices) {
                         val farmer = remaining[i]
                         val distance = calculateHaversineDistance(
-                            currentLat, currentLon,
-                            farmer.latitude!!, farmer.longitude!!
+                            currentLat,
+                            currentLon,
+                            farmer.latitude!!,
+                            farmer.longitude!!
                         )
                         if (distance < minDistance) {
                             minDistance = distance
@@ -209,8 +211,10 @@ class LocationViewModel(
 
                 for (farmer in farmersWithLocation) {
                     val distance = calculateHaversineDistance(
-                        currentLatitude, currentLongitude,
-                        farmer.latitude!!, farmer.longitude!!
+                        currentLatitude,
+                        currentLongitude,
+                        farmer.latitude!!,
+                        farmer.longitude!!
                     )
                     if (distance < minDistance) {
                         minDistance = distance
