@@ -95,8 +95,12 @@ class LogViewModel(
                 withContext(Dispatchers.IO) {
                     FileWriter(file).use { writer ->
                         writer.append("Timestamp,Level,Category,Message,Details\n")
+                        val q = "\""
                         currentLogs.forEach {
-                            writer.append("${it.timestamp},${it.level},${it.category},\"${it.message}\",\"${it.details}\"\n")
+                            writer.append(
+                                "${it.timestamp},${it.level},${it.category}," +
+                                    "$q${it.message}$q,$q${it.details}$q\n"
+                            )
                         }
                     }
                 }

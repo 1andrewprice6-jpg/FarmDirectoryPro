@@ -3,16 +3,14 @@ package com.example.farmdirectoryupgraded.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.farmdirectoryupgraded.data.AttendanceRecord
 import com.example.farmdirectoryupgraded.data.AttendanceDao
+import com.example.farmdirectoryupgraded.data.AttendanceRecord
 import com.example.farmdirectoryupgraded.data.Employee
 import com.example.farmdirectoryupgraded.data.EmployeeDao
 import com.example.farmdirectoryupgraded.utils.QRCodeScanner
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.Date
 
 /**
  * ViewModel for attendance tracking operations
@@ -302,7 +300,7 @@ class AttendanceViewModel(
     private fun calculateHoursWorked(checkInTimeMs: Long): Double {
         val currentTimeMs = System.currentTimeMillis()
         val durationMs = currentTimeMs - checkInTimeMs
-        return durationMs / (1000.0 * 60 * 60)  // Convert milliseconds to hours
+        return durationMs / (1000.0 * 60 * 60) // Convert milliseconds to hours
     }
 
     /**
