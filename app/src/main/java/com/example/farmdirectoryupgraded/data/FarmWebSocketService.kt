@@ -3,7 +3,6 @@ package com.example.farmdirectoryupgraded.data
 import android.util.Log
 import io.socket.client.IO
 import io.socket.client.Socket
-import io.socket.emitter.Emitter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -20,8 +19,8 @@ class FarmWebSocketService(private val baseUrl: String = "https://api.farmdirect
 
     companion object {
         private const val TAG = "FarmWebSocketService"
-        private const val INITIAL_RECONNECT_DELAY_MS = 1000L  // 1 second
-        private const val MAX_RECONNECT_DELAY_MS = 60000L     // 1 minute
+        private const val INITIAL_RECONNECT_DELAY_MS = 1000L // 1 second
+        private const val MAX_RECONNECT_DELAY_MS = 60000L // 1 minute
         private const val MAX_RECONNECTION_ATTEMPTS = 10
 
         @Volatile
@@ -82,7 +81,7 @@ class FarmWebSocketService(private val baseUrl: String = "https://api.farmdirect
 
         try {
             val options = IO.Options.builder()
-                .setReconnection(false)  // Handle reconnection manually
+                .setReconnection(false) // Handle reconnection manually
                 .setReconnectionDelay(1000)
                 .setReconnectionDelayMax(5000)
                 .setRandomizationFactor(0.5)

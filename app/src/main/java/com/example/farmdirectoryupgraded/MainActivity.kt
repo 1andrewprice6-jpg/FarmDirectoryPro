@@ -22,15 +22,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.farmdirectoryupgraded.data.AppSettings
 import com.example.farmdirectoryupgraded.data.Farmer
 import com.example.farmdirectoryupgraded.data.FarmDatabase
+import com.example.farmdirectoryupgraded.data.FarmWebSocketService
 import com.example.farmdirectoryupgraded.ui.*
 import com.example.farmdirectoryupgraded.ui.theme.FarmDirectoryTheme
-import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
 import com.example.farmdirectoryupgraded.viewmodel.AttendanceViewModel
-import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
-import com.example.farmdirectoryupgraded.viewmodel.WebSocketViewModel
-import com.example.farmdirectoryupgraded.viewmodel.LogViewModel
 import com.example.farmdirectoryupgraded.viewmodel.FarmViewModelFactory
-import com.example.farmdirectoryupgraded.data.FarmWebSocketService
+import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
+import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
+import com.example.farmdirectoryupgraded.viewmodel.LogViewModel
+import com.example.farmdirectoryupgraded.viewmodel.WebSocketViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

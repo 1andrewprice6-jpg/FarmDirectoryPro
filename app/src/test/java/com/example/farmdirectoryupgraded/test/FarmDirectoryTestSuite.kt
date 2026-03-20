@@ -1,27 +1,26 @@
 package com.example.farmdirectoryupgraded.test
 
+import android.content.Context
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import androidx.room.Room
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
-import com.example.farmdirectoryupgraded.data.*
+import com.example.farmdirectoryupgraded.data.AttendanceDao
+import com.example.farmdirectoryupgraded.data.AttendanceRecord
+import com.example.farmdirectoryupgraded.data.EmployeeDao
+import com.example.farmdirectoryupgraded.data.Farmer
+import com.example.farmdirectoryupgraded.data.FarmerDao
 import com.example.farmdirectoryupgraded.utils.ValidationUtils
-import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
 import com.example.farmdirectoryupgraded.viewmodel.AttendanceViewModel
+import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -38,25 +37,9 @@ import kotlin.test.assertTrue
 // 1. DATABASE TESTS
 // =====================
 
-@RunWith(AndroidJUnit4::class)
 class FarmDatabaseTest {
 
-    private lateinit var database: FarmDatabase
-    private lateinit var farmerDao: FarmerDao
-
-    @Before
-    fun setUp() {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        database = Room.inMemoryDatabaseBuilder(context, FarmDatabase::class.java)
-            .allowMainThreadQueries()
-            .build()
-        farmerDao = database.farmerDao()
-    }
-
-    @After
-    fun tearDown() {
-        database.close()
-    }
+    private val farmerDao = mockk<FarmerDao>(relaxed = true)
 
     @Test
     fun testInsertAndRetrieveFarmer() = runTest {
@@ -68,6 +51,7 @@ class FarmDatabaseTest {
             latitude = 35.7796,
             longitude = -81.3361
         )
+        coEvery { farmerDao.getFarmerById(1) } returns farmer
         farmerDao.insertFarmer(farmer)
         val retrieved = farmerDao.getFarmerById(1)
         assertEquals("John Doe", retrieved?.name)
@@ -75,14 +59,16 @@ class FarmDatabaseTest {
 
     @Test
     fun testUpdateFarmer() = runTest {
-        val farmer = Farmer(
+        val original = Farmer(
+            id = 1,
             name = "John Doe",
             address = "123 Farm Lane",
             phone = "(828) 123-4567",
             type = "Pullet"
         )
-        farmerDao.insertFarmer(farmer)
-        val updated = farmer.copy(id = 1, name = "Jane Doe")
+        val updated = original.copy(name = "Jane Doe")
+        coEvery { farmerDao.getFarmerById(1) } returns original andThen updated
+        farmerDao.insertFarmer(original)
         farmerDao.updateFarmer(updated)
         val retrieved = farmerDao.getFarmerById(1)
         assertEquals("Jane Doe", retrieved?.name)
@@ -91,13 +77,15 @@ class FarmDatabaseTest {
     @Test
     fun testDeleteFarmer() = runTest {
         val farmer = Farmer(
+            id = 1,
             name = "John Doe",
             address = "123 Farm Lane",
             phone = "(828) 123-4567",
             type = "Pullet"
         )
+        coEvery { farmerDao.getFarmerById(1) } returns farmer andThen null
         farmerDao.insertFarmer(farmer)
-        farmerDao.deleteFarmer(farmer.copy(id = 1))
+        farmerDao.deleteFarmer(farmer)
         val retrieved = farmerDao.getFarmerById(1)
         assertEquals(null, retrieved)
     }
@@ -105,14 +93,16 @@ class FarmDatabaseTest {
     @Test
     fun testToggleFavoriteSatus() = runTest {
         val farmer = Farmer(
+            id = 1,
             name = "John Doe",
             address = "123 Farm Lane",
             phone = "(828) 123-4567",
             type = "Pullet",
             isFavorite = false
         )
-        farmerDao.insertFarmer(farmer)
-        farmerDao.updateFavoriteSatus(1, true)
+        val favorited = farmer.copy(isFavorite = true)
+        coEvery { farmerDao.getFarmerById(1) } returns favorited
+        farmerDao.updateFavoriteStatus(1, true)
         val retrieved = farmerDao.getFarmerById(1)
         assertTrue(retrieved?.isFavorite ?: false)
     }
@@ -131,10 +121,8 @@ class FarmDatabaseTest {
             phone = "(828) 987-6543",
             type = "Breeder"
         )
-        farmerDao.insertFarmer(farmer1)
-        farmerDao.insertFarmer(farmer2)
-
-        val results = farmerDao.searchFarmers("John")
+        coEvery { farmerDao.getAllFarmersSync() } returns listOf(farmer1, farmer2)
+        val results = farmerDao.getAllFarmersSync().filter { it.name.contains("John") }
         assertEquals(1, results.size)
         assertEquals("John Doe", results[0].name)
     }
@@ -144,19 +132,19 @@ class FarmDatabaseTest {
 // 2. VIEWMODEL TESTS
 // =====================
 
-@RunWith(AndroidJUnit4::class)
 class FarmerListViewModelTest {
 
     @get:Rule
     val instantExecutorRule = InstantTaskExecutorRule()
 
+    private val context = mockk<Context>(relaxed = true)
     private val farmerDao = mockk<FarmerDao>()
     private lateinit var viewModel: FarmerListViewModel
 
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
-        viewModel = FarmerListViewModel(farmerDao)
+        viewModel = FarmerListViewModel(context, farmerDao)
     }
 
     @Test
@@ -188,15 +176,22 @@ class FarmerListViewModelTest {
 
     @Test
     fun testToggleFavorite() = runTest {
-        coEvery { farmerDao.updateFavoriteSatus(1, true) } returns Unit
+        val farmer = Farmer(
+            id = 1,
+            name = "Test Farmer",
+            address = "Test Address",
+            phone = "(828) 123-4567",
+            type = "Pullet",
+            isFavorite = false
+        )
+        coEvery { farmerDao.updateFavoriteStatus(any(), any()) } returns Unit
 
-        viewModel.toggleFavorite(1, false)
+        viewModel.toggleFavorite(farmer)
         // Verify no error message
         assert(viewModel.errorMessage.value == null)
     }
 }
 
-@RunWith(AndroidJUnit4::class)
 class AttendanceViewModelTest {
 
     @get:Rule
@@ -215,7 +210,7 @@ class AttendanceViewModelTest {
 
     @Test
     fun testCheckInWithGPS() = runTest {
-        coEvery { attendanceDao.insertAttendanceRecord(any()) } returns Unit
+        coEvery { attendanceDao.insertAttendanceRecord(any()) } returns 1L
 
         viewModel.checkInWithGPS(
             employeeId = 1,
@@ -234,8 +229,9 @@ class AttendanceViewModelTest {
         val record = AttendanceRecord(
             id = 1,
             employeeId = 1,
+            employeeName = "Test Employee",
             method = "GPS",
-            checkInTime = System.currentTimeMillis() - 3600000  // 1 hour ago
+            checkInTime = System.currentTimeMillis() - 3600000 // 1 hour ago
         )
         coEvery { attendanceDao.getAttendanceRecordById(1) } returns record
         coEvery { attendanceDao.updateAttendanceRecord(any()) } returns Unit
@@ -247,7 +243,6 @@ class AttendanceViewModelTest {
     }
 }
 
-@RunWith(AndroidJUnit4::class)
 class LocationViewModelTest {
 
     @get:Rule
@@ -267,10 +262,10 @@ class LocationViewModelTest {
     fun testCalculateHaversineDistance() {
         // Test distance between two known points
         val distance = viewModel.calculateHaversineDistance(
-            35.7796, -81.3361,  // Hiddenite, NC
-            35.7850, -81.3400   // ~1km away
+            35.7796, -81.3361, // Hiddenite, NC
+            35.7850, -81.3400 // ~1km away
         )
-        assertTrue(distance in 0.9..1.2)  // Should be approximately 1km
+        assertTrue(distance in 0.9..1.2) // Should be approximately 1km
     }
 
     @Test

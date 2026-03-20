@@ -1,6 +1,5 @@
 package com.example.farmdirectoryupgraded.security
 
-import android.content.Context
 import okhttp3.CertificatePinner
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -21,7 +20,7 @@ object CertificatePinning {
      */
     private val PRODUCTION_PINS = listOf(
         "sha256/YOUR_PRODUCTION_PIN_1_HERE",
-        "sha256/YOUR_PRODUCTION_PIN_2_HERE"  // Backup pin
+        "sha256/YOUR_PRODUCTION_PIN_2_HERE" // Backup pin
     )
 
     /**

@@ -13,8 +13,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.farmdirectoryupgraded.data.Farmer
 import com.example.farmdirectoryupgraded.viewmodel.AttendanceViewModel
-import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
+import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 
 // ========================================================================
 // ATTENDANCE TRACKING SCREEN
@@ -47,24 +47,24 @@ fun AttendanceScreen(
     // AttendanceViewModel has _attendanceRecords: StateFlow<List<com.example.farmdirectoryupgraded.data.AttendanceRecord>>
     // But the UI expects com.example.farmdirectoryupgraded.ui.AttendanceRecord (which is defined above).
     // The ViewModel seems to be returning the DATA layer objects?
-    // Let's check AttendanceViewModel.kt... 
+    // Let's check AttendanceViewModel.kt...
     // It returns `List<AttendanceRecord>`. And imports `com.example.farmdirectoryupgraded.data.AttendanceRecord`.
     // The UI `AttendanceRecord` is different (has formatted timestamp strings).
     // I need to map it here OR update ViewModel to return UI models.
-    // The OLD FarmerViewModel mapped it. 
+    // The OLD FarmerViewModel mapped it.
     // Let's look at AttendanceViewModel again.
-    // It returns `val attendanceRecords = _attendanceRecords.asStateFlow()`. 
+    // It returns `val attendanceRecords = _attendanceRecords.asStateFlow()`.
     // And `_attendanceRecords` holds `List<com.example.farmdirectoryupgraded.data.AttendanceRecord>`.
-    
-    // I will map it here in the UI for now to save time on ViewModel refactoring, 
-    // or better, I should have updated ViewModel to return UI friendly data. 
+
+    // I will map it here in the UI for now to save time on ViewModel refactoring,
+    // or better, I should have updated ViewModel to return UI friendly data.
     // Given I can't easily change ViewModel without re-reading/writing, I'll map here.
-    
+
     val rawRecords by viewModel.attendanceRecords.collectAsState()
-    
+
     // SimpleDateFormat for UI mapping
     val dateFormatter = java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault())
-    
+
     val attendanceRecords = rawRecords.map { record ->
         AttendanceRecord(
             id = record.id,
@@ -79,14 +79,14 @@ fun AttendanceScreen(
     var selectedMethod by remember { mutableStateOf(AttendanceMethod.GPS) }
     var farmName by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
-    
-    // AttendanceViewModel uses selectEmployee(employee). 
-    // But this screen doesn't show employee selection? 
-    // The old FarmerViewModel handled "selectedEmployee". 
+
+    // AttendanceViewModel uses selectEmployee(employee).
+    // But this screen doesn't show employee selection?
+    // The old FarmerViewModel handled "selectedEmployee".
     // We might need to ensure an employee is selected before coming here or select one here.
-    // For now, I'll assume one is selected or the VM handles it. 
+    // For now, I'll assume one is selected or the VM handles it.
     // Wait, the `recordAttendance` in `AttendanceViewModel` CHECKS for `_selectedEmployee`.
-    // If null, it errors. 
+    // If null, it errors.
     // The UI needs to allow selecting an employee if none is selected?
     // Or `MainActivity` ensures one is selected?
     // Let's proceed with the existing logic.
@@ -173,15 +173,15 @@ fun AttendanceScreen(
                         Button(
                             onClick = {
                                 if (farmName.isNotBlank()) {
-                                    // AttendanceViewModel.checkInWithGPS requires params: 
+                                    // AttendanceViewModel.checkInWithGPS requires params:
                                     // employeeId, lat, lon, workLocation, task, notes.
-                                    // But `recordAttendance` was the old method. 
+                                    // But `recordAttendance` was the old method.
                                     // AttendanceViewModel has `checkInWithGPS` and `checkInWithQRCode`.
                                     // It does NOT have a generic `recordAttendance` that matches the old signature (Method, Location, Notes).
                                     // I need to adapt.
                                     // Or better, I'll use a placeholder logic or call checkInWithGPS with dummy coords if GPS not available.
                                     // The `AttendanceMethod` enum here suggests different methods.
-                                    
+
                                     // For now, let's try to find the currently selected employee ID from the VM
                                     // AttendanceViewModel has `selectedEmployee`.
                                     val emp = viewModel.selectedEmployee.value
@@ -287,7 +287,7 @@ fun ReconcileScreen(
     onBack: () -> Unit
 ) {
     var isLoading by remember { mutableStateOf(false) }
-    
+
     // Map LocationViewModel.ReconcileResult to UI ReconcileResult
     val vmResult by viewModel.reconcileResult.collectAsState()
     val reconcileResult = vmResult?.let { res ->
@@ -298,7 +298,7 @@ fun ReconcileScreen(
             alternatives = emptyList() // LocationViewModel doesn't seem to return alternatives currently
         )
     }
-    
+
     var currentLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
 
     Scaffold(
@@ -363,7 +363,7 @@ fun ReconcileScreen(
                                     viewModel.reconcileFarm(mockLat, mockLon)
                                 }
                                 // Simulate loading delay or wait for result
-                                isLoading = false 
+                                isLoading = false
                             },
                             modifier = Modifier.fillMaxWidth(),
                             enabled = !isLoading
@@ -493,10 +493,10 @@ fun RouteOptimizationScreen(
 ) {
     val farmers by farmerListViewModel.farmers.collectAsState(initial = emptyList())
     var selectedFarmers by remember { mutableStateOf<Set<Farmer>>(emptySet()) }
-    
+
     val vmOptimizedRoute by locationViewModel.optimizedRoute.collectAsState()
     val isOptimizing by locationViewModel.isCalculating.collectAsState()
-    
+
     // Map VM OptimizedRoute to UI OptimizedRoute
     val optimizedRoute = vmOptimizedRoute?.let { route ->
         // Convert milliseconds to readable time
@@ -506,12 +506,12 @@ fun RouteOptimizationScreen(
         } else {
             "$totalMinutes minutes"
         }
-        
+
         // Calculate fuel cost (approx $1.50/L, 8L/100km)
         val fuelCost = (route.totalDistance / 100.0) * 8.0 * 1.50
 
         // Create stops list
-        val stops = route.farmers.mapIndexed { index, f: Farmer -> 
+        val stops = route.farmers.mapIndexed { index, f: Farmer ->
              RouteStop(
                  farmName = f.farmName.ifBlank { f.name },
                  distanceFromPrevious = if (index == 0) "Start" else "...", // Simplified

@@ -198,16 +198,18 @@ tasks.register<JacocoReport>("jacocoTestReport") {
         "**/data/models/**"
     )
 
-    val debugTree = fileTree("${buildDir}/tmp/kotlin-classes/devDebug") {
+    val debugTree = fileTree("$buildDir/tmp/kotlin-classes/devDebug") {
         exclude(fileFilter)
     }
     val mainSrc = "${project.projectDir}/src/main/java"
 
     sourceDirectories.setFrom(files(mainSrc))
     classDirectories.setFrom(files(debugTree))
-    executionData.setFrom(fileTree(buildDir) {
-        include("jacoco/testDevDebugUnitTest.exec")
-    })
+    executionData.setFrom(
+        fileTree(buildDir) {
+            include("jacoco/testDevDebugUnitTest.exec")
+        }
+    )
 }
 
 // Lint Configuration
@@ -218,6 +220,6 @@ android.lint {
     disable += listOf("ObsoleteLintCustomCheck", "GradleDependency")
     xmlReport = true
     htmlReport = true
-    xmlOutput = file("${buildDir}/reports/lint/lint-results.xml")
-    htmlOutput = file("${buildDir}/reports/lint/lint-results.html")
+    xmlOutput = file("$buildDir/reports/lint/lint-results.xml")
+    htmlOutput = file("$buildDir/reports/lint/lint-results.html")
 }

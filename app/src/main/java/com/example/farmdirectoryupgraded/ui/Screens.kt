@@ -15,12 +15,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.farmdirectoryupgraded.data.AppSettings
-import com.example.farmdirectoryupgraded.viewmodel.WebSocketViewModel
+import com.example.farmdirectoryupgraded.utils.SanitizationUtils
+import com.example.farmdirectoryupgraded.utils.ValidationUtils
 import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LogViewModel
-import com.example.farmdirectoryupgraded.utils.ValidationUtils
-import com.example.farmdirectoryupgraded.utils.SanitizationUtils
-import java.text.SimpleDateFormat
+import com.example.farmdirectoryupgraded.viewmodel.WebSocketViewModel
 import java.util.*
 
 // ========================================================================
