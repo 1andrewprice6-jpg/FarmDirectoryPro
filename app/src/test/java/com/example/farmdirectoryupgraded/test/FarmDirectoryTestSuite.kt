@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.example.farmdirectoryupgraded.data.AttendanceDao
 import com.example.farmdirectoryupgraded.data.AttendanceRecord
+import com.example.farmdirectoryupgraded.data.Employee
 import com.example.farmdirectoryupgraded.data.EmployeeDao
 import com.example.farmdirectoryupgraded.data.Farmer
 import com.example.farmdirectoryupgraded.data.FarmerDao
@@ -13,9 +14,15 @@ import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -67,7 +74,7 @@ class FarmDatabaseTest {
             type = "Pullet"
         )
         val updated = original.copy(name = "Jane Doe")
-        coEvery { farmerDao.getFarmerById(1) } returns original andThen updated
+        coEvery { farmerDao.getFarmerById(1) } returns updated
         farmerDao.insertFarmer(original)
         farmerDao.updateFarmer(updated)
         val retrieved = farmerDao.getFarmerById(1)
@@ -83,7 +90,7 @@ class FarmDatabaseTest {
             phone = "(828) 123-4567",
             type = "Pullet"
         )
-        coEvery { farmerDao.getFarmerById(1) } returns farmer andThen null
+        coEvery { farmerDao.getFarmerById(1) } returns null
         farmerDao.insertFarmer(farmer)
         farmerDao.deleteFarmer(farmer)
         val retrieved = farmerDao.getFarmerById(1)
@@ -140,11 +147,20 @@ class FarmerListViewModelTest {
     private val context = mockk<Context>(relaxed = true)
     private val farmerDao = mockk<FarmerDao>()
     private lateinit var viewModel: FarmerListViewModel
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
+        Dispatchers.setMain(testDispatcher)
+        every { farmerDao.getAllFarmers() } returns flowOf(emptyList())
+        every { farmerDao.getFarmersPaged() } returns mockk(relaxed = true)
         viewModel = FarmerListViewModel(context, farmerDao)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
@@ -200,12 +216,21 @@ class AttendanceViewModelTest {
     private val attendanceDao = mockk<AttendanceDao>()
     private val employeeDao = mockk<EmployeeDao>()
     private lateinit var viewModel: AttendanceViewModel
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
+        Dispatchers.setMain(testDispatcher)
         coEvery { employeeDao.getAllEmployees() } returns flowOf(emptyList())
+        coEvery { employeeDao.getEmployeeById(any()) } returns
+            Employee(id = 1, name = "Test Employee", role = "CATCHER")
         viewModel = AttendanceViewModel(attendanceDao, employeeDao)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
@@ -251,11 +276,18 @@ class LocationViewModelTest {
     private val farmerDao = mockk<FarmerDao>()
     private val employeeDao = mockk<EmployeeDao>()
     private lateinit var viewModel: LocationViewModel
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
+        Dispatchers.setMain(testDispatcher)
         viewModel = LocationViewModel(farmerDao, employeeDao)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
@@ -263,9 +295,9 @@ class LocationViewModelTest {
         // Test distance between two known points
         val distance = viewModel.calculateHaversineDistance(
             35.7796, -81.3361, // Hiddenite, NC
-            35.7850, -81.3400 // ~1km away
+            35.7850, -81.3400 // ~0.695km away
         )
-        assertTrue(distance in 0.9..1.2) // Should be approximately 1km
+        assertTrue(distance in 0.6..0.9) // Should be approximately 0.695km
     }
 
     @Test
