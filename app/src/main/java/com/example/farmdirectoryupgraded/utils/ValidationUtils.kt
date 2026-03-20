@@ -1,6 +1,5 @@
 package com.example.farmdirectoryupgraded.utils
 
-import android.util.Patterns
 import java.util.regex.Pattern
 
 /**
@@ -9,10 +8,14 @@ import java.util.regex.Pattern
  */
 object ValidationUtils {
 
-    // Regex patterns for validation
-    private val EMAIL_PATTERN = Patterns.EMAIL_ADDRESS
+    // Regex patterns for validation (using standard Java patterns to support JVM unit tests)
+    private val EMAIL_PATTERN: Pattern = Pattern.compile(
+        "[a-zA-Z0-9+._%-]{1,256}@[a-zA-Z0-9][a-zA-Z0-9\\-]{0,64}(\\.[a-zA-Z0-9][a-zA-Z0-9\\-]{0,25})+"
+    )
     private val PHONE_PATTERN = Pattern.compile("^[+]?[(]?[0-9]{3}[)]?[-\\s.]?[0-9]{3}[-\\s.]?[0-9]{4,6}$")
-    private val URL_PATTERN = Patterns.WEB_URL
+    private val URL_PATTERN: Pattern = Pattern.compile(
+        "https?://(www\\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_+.~#?&/=]*)"
+    )
     private val COORDINATE_PATTERN = Pattern.compile("^-?([0-9]{1,2}|1[0-7][0-9]|180)(\\.[0-9]{1,10})?$")
 
     /**

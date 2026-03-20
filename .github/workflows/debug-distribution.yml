@@ -1,0 +1,83 @@
+name: Debug APK Distribution
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: 'Build notes (optional)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-distribute:
+    name: Build & Publish Debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Grant execute permission
+      run: chmod +x gradlew
+
+    - name: Build Debug APK
+      run: ./gradlew assembleProdDebug --stacktrace
+
+    - name: Rename APK with build info
+      id: apk
+      run: |
+        BUILD_DATE=$(date -u +'%Y%m%d-%H%M')
+        SHORT_SHA=${GITHUB_SHA::7}
+        APK_NAME="FarmDirectoryPro-debug-${BUILD_DATE}-${SHORT_SHA}.apk"
+        cp app/build/outputs/apk/prod/debug/app-prod-debug.apk "$APK_NAME"
+        echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
+        echo "build_date=$(date -u +'%Y-%m-%d %H:%M UTC')" >> $GITHUB_OUTPUT
+
+    - name: Upload APK as workflow artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: debug-apk
+        path: ${{ steps.apk.outputs.apk_name }}
+        retention-days: 30
+
+    - name: Publish debug pre-release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: debug-latest
+        name: "Debug Build (Latest)"
+        prerelease: true
+        body: |
+          ## Debug APK — Latest Build
+
+          **Built:** ${{ steps.apk.outputs.build_date }}
+          **Commit:** ${{ github.sha }}
+          **Branch:** ${{ github.ref_name }}
+          ${{ github.event.inputs.notes != '' && format('**Notes:** {0}', github.event.inputs.notes) || '' }}
+
+          ### How to install on your Android phone
+
+          1. Download `${{ steps.apk.outputs.apk_name }}` from the **Assets** section below.
+          2. On your Android phone, open **Settings → Security** (or **Apps → Special app access**) and enable **Install unknown apps** for your browser or file manager.
+          3. Open the downloaded APK file and tap **Install**.
+          4. Once installed, open **Farm Directory Pro** from your app drawer.
+
+          > **Note:** This is a debug/development build. For production use, install from the Google Play Store.
+        files: ${{ steps.apk.outputs.apk_name }}
+        token: ${{ secrets.GITHUB_TOKEN }}

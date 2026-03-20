@@ -234,7 +234,7 @@ jobs:
     name: Deploy to Google Play Store
     runs-on: ubuntu-latest
     needs: [build-release, create-release]
-    if: secrets.PLAY_STORE_JSON_KEY != ''
+    if: ${{ secrets.PLAY_STORE_JSON_KEY != '' }}
 
     steps:
     - name: Checkout code
