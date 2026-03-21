@@ -12,6 +12,7 @@ import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -102,7 +103,7 @@ class FarmDatabaseTest {
     }
 
     @Test
-    fun testToggleFavoriteSatus() = runTest {
+    fun testToggleFavoriteStatus() = runTest {
         val farmer = Farmer(
             name = "John Doe",
             address = "123 Farm Lane",
@@ -111,7 +112,7 @@ class FarmDatabaseTest {
             isFavorite = false
         )
         farmerDao.insertFarmer(farmer)
-        farmerDao.updateFavoriteSatus(1, true)
+        farmerDao.updateFavoriteStatus(1, true)
         val retrieved = farmerDao.getFarmerById(1)
         assertTrue(retrieved?.isFavorite ?: false)
     }
@@ -133,7 +134,7 @@ class FarmDatabaseTest {
         farmerDao.insertFarmer(farmer1)
         farmerDao.insertFarmer(farmer2)
 
-        val results = farmerDao.searchFarmers("John")
+        val results = farmerDao.searchFarmers("John").first()
         assertEquals(1, results.size)
         assertEquals("John Doe", results[0].name)
     }
@@ -150,12 +151,14 @@ class FarmerListViewModelTest {
     val instantExecutorRule = InstantTaskExecutorRule()
 
     private val farmerDao = mockk<FarmerDao>()
+    private val context = mockk<android.content.Context>(relaxed = true)
     private lateinit var viewModel: FarmerListViewModel
 
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
-        viewModel = FarmerListViewModel(farmerDao)
+        coEvery { farmerDao.getAllFarmers() } returns flowOf(emptyList())
+        viewModel = FarmerListViewModel(context, farmerDao)
     }
 
     @Test
@@ -187,9 +190,10 @@ class FarmerListViewModelTest {
 
     @Test
     fun testToggleFavorite() = runTest {
-        coEvery { farmerDao.updateFavoriteSatus(1, true) } returns Unit
+        coEvery { farmerDao.updateFavoriteStatus(1, true) } returns Unit
 
-        viewModel.toggleFavorite(1, false)
+        val farmer = Farmer(id = 1, name = "Test", address = "Test", phone = "123", isFavorite = false)
+        viewModel.toggleFavorite(farmer)
         // Verify no error message
         assert(viewModel.errorMessage.value == null)
     }
@@ -214,7 +218,7 @@ class AttendanceViewModelTest {
 
     @Test
     fun testCheckInWithGPS() = runTest {
-        coEvery { attendanceDao.insertAttendanceRecord(any()) } returns Unit
+        coEvery { attendanceDao.insertAttendance(any()) } returns 1L
 
         viewModel.checkInWithGPS(
             employeeId = 1,
@@ -236,8 +240,8 @@ class AttendanceViewModelTest {
             method = "GPS",
             checkInTime = System.currentTimeMillis() - 3600000 // 1 hour ago
         )
-        coEvery { attendanceDao.getAttendanceRecordById(1) } returns record
-        coEvery { attendanceDao.updateAttendanceRecord(any()) } returns Unit
+        coEvery { attendanceDao.getAttendanceById(1) } returns record
+        coEvery { attendanceDao.updateAttendance(any()) } returns Unit
 
         viewModel.checkOut(1, 35.7796, -81.3361)
 

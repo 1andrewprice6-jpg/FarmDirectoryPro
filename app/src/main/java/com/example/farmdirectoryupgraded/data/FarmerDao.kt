@@ -14,6 +14,18 @@ interface FarmerDao {
     fun getAllFarmers(): Flow<List<Farmer>>
 
     /**
+     * Synchronous query for use in coroutines where Flow is not needed
+     */
+    @Query("SELECT * FROM farmers ORDER BY name ASC")
+    suspend fun getAllFarmersSync(): List<Farmer>
+
+    /**
+     * PagingSource for Jetpack Paging 3 integration
+     */
+    @Query("SELECT * FROM farmers ORDER BY name ASC")
+    fun getFarmersPaged(): PagingSource<Int, Farmer>
+
+    /**
      * Paginated query for large datasets
      */
     @Query("SELECT * FROM farmers ORDER BY name ASC LIMIT :limit OFFSET :offset")
@@ -62,6 +74,18 @@ interface FarmerDao {
 
     @Query("DELETE FROM farmers")
     suspend fun deleteAllFarmers()
+
+    /**
+     * Update favorite status for a farmer
+     */
+    @Query("UPDATE farmers SET isFavorite = :isFavorite WHERE id = :id")
+    suspend fun updateFavoriteStatus(id: Int, isFavorite: Boolean)
+
+    /**
+     * Update farmer GPS location and timestamp
+     */
+    @Query("UPDATE farmers SET latitude = :latitude, longitude = :longitude, lastLocationUpdate = :timestamp WHERE id = :id")
+    suspend fun updateFarmerLocation(id: Int, latitude: Double, longitude: Double, timestamp: Long)
 
     /**
      * Optimized query using index on name

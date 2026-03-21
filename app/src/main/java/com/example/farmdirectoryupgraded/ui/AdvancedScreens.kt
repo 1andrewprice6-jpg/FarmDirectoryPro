@@ -510,13 +510,24 @@ fun RouteOptimizationScreen(
         // Calculate fuel cost (approx $1.50/L, 8L/100km)
         val fuelCost = (route.totalDistance / 100.0) * 8.0 * 1.50
 
-        // Create stops list
-        val stops = route.farmers.mapIndexed { index, farmer -> 
-             RouteStop(
-                 farmName = farmer.farmName.ifBlank { farmer.name },
-                 distanceFromPrevious = if (index == 0) "Start" else "...", // Simplified
-                 timeFromPrevious = if (index == 0) "-" else "..."
-             )
+        // Create stops list with actual per-leg distances
+        val stops = route.farmers.mapIndexed { index, farmer ->
+            val legDist = route.legDistances.getOrNull(index)
+            val legTimeMinutes = if (legDist != null) (legDist / 30.0 * 60).toLong() else 0L
+            RouteStop(
+                farmName = farmer.farmName.ifBlank { farmer.name },
+                distanceFromPrevious = if (legDist != null) {
+                    String.format("%.1f", legDist)
+                } else {
+                    "Start"
+                },
+                timeFromPrevious = if (legDist != null) {
+                    if (legTimeMinutes > 60) "${legTimeMinutes / 60}h ${legTimeMinutes % 60}m"
+                    else "${legTimeMinutes} min"
+                } else {
+                    "-"
+                }
+            )
         }
 
         OptimizedRoute(

@@ -37,7 +37,8 @@ class LocationViewModel(
     data class OptimizedRoute(
         val farmers: List<Farmer>,
         val totalDistance: Double,
-        val estimatedTime: Long
+        val estimatedTime: Long,
+        val legDistances: List<Double> = emptyList()
     )
 
     data class ReconcileResult(
@@ -117,7 +118,7 @@ class LocationViewModel(
     }
 
     /**
-     * Optimize route using nearest neighbor algorithm
+     * Optimize route using nearest neighbor algorithm with 2-opt improvement
      *
      * @param currentLatitude Current starting latitude
      * @param currentLongitude Current starting longitude
@@ -136,12 +137,11 @@ class LocationViewModel(
                     return@launch
                 }
 
-                // Use nearest neighbor algorithm
+                // Step 1: Build initial route using nearest neighbor algorithm
                 val optimizedList = mutableListOf<Farmer>()
                 val remaining = farmersWithLocation.toMutableList()
                 var currentLat = currentLatitude
                 var currentLon = currentLongitude
-                var totalDistance = 0.0
 
                 while (remaining.isNotEmpty()) {
                     // Find nearest farmer
@@ -165,21 +165,42 @@ class LocationViewModel(
                     // Add nearest farmer to route
                     val nearest = remaining.removeAt(nearestIndex)
                     optimizedList.add(nearest)
-                    totalDistance += minDistance
                     currentLat = nearest.latitude!!
                     currentLon = nearest.longitude!!
+                }
+
+                // Step 2: Apply 2-opt improvement to reduce total distance
+                val improvedRoute = apply2OptImprovement(
+                    currentLatitude, currentLongitude, optimizedList
+                )
+
+                // Step 3: Calculate per-leg distances
+                val legDistances = mutableListOf<Double>()
+                var totalDistance = 0.0
+                var prevLat = currentLatitude
+                var prevLon = currentLongitude
+                for (farmer in improvedRoute) {
+                    val legDist = calculateHaversineDistance(
+                        prevLat, prevLon,
+                        farmer.latitude!!, farmer.longitude!!
+                    )
+                    legDistances.add(legDist)
+                    totalDistance += legDist
+                    prevLat = farmer.latitude!!
+                    prevLon = farmer.longitude!!
                 }
 
                 // Calculate estimated time (assume average 30 km/h travel speed)
                 val estimatedTimeMs = (totalDistance / 30.0 * 60 * 60 * 1000).toLong()
 
                 _optimizedRoute.value = OptimizedRoute(
-                    farmers = optimizedList,
+                    farmers = improvedRoute,
                     totalDistance = totalDistance,
-                    estimatedTime = estimatedTimeMs
+                    estimatedTime = estimatedTimeMs,
+                    legDistances = legDistances
                 )
 
-                Log.d(TAG, "Route optimized: ${optimizedList.size} farmers, ${String.format("%.2f", totalDistance)} km")
+                Log.d(TAG, "Route optimized: ${improvedRoute.size} farmers, ${String.format("%.2f", totalDistance)} km")
             } catch (e: Exception) {
                 val errorMsg = "Failed to optimize route: ${e.message}"
                 _errorMessage.value = errorMsg
@@ -188,6 +209,81 @@ class LocationViewModel(
                 _isCalculating.value = false
             }
         }
+    }
+
+    /**
+     * Apply 2-opt improvement to reduce total route distance
+     * Repeatedly reverses segments of the route when it would reduce total distance
+     *
+     * @param startLat Starting latitude
+     * @param startLon Starting longitude
+     * @param route Initial route from nearest neighbor
+     * @return Improved route
+     */
+    private fun apply2OptImprovement(
+        startLat: Double,
+        startLon: Double,
+        route: List<Farmer>
+    ): List<Farmer> {
+        if (route.size < 3) return route
+
+        val improved = route.toMutableList()
+        var improved2opt = true
+
+        while (improved2opt) {
+            improved2opt = false
+            for (i in 0 until improved.size - 1) {
+                for (j in i + 1 until improved.size) {
+                    val currentDist = segmentDistance(startLat, startLon, improved, i, j)
+                    // Reverse the segment between i and j
+                    val reversed = improved.toMutableList()
+                    reversed.subList(i, j + 1).apply {
+                        val temp = this.toList().reversed()
+                        clear()
+                        addAll(temp)
+                    }
+                    val newDist = segmentDistance(startLat, startLon, reversed, i, j)
+
+                    if (newDist < currentDist - 0.001) { // Small threshold to avoid floating point issues
+                        improved.clear()
+                        improved.addAll(reversed)
+                        improved2opt = true
+                    }
+                }
+            }
+        }
+        return improved
+    }
+
+    /**
+     * Calculate total distance of a route segment involving edges around indices i and j
+     */
+    private fun segmentDistance(
+        startLat: Double,
+        startLon: Double,
+        route: List<Farmer>,
+        i: Int,
+        j: Int
+    ): Double {
+        var dist = 0.0
+        // Edge before i
+        val prevLat = if (i == 0) startLat else route[i - 1].latitude!!
+        val prevLon = if (i == 0) startLon else route[i - 1].longitude!!
+        dist += calculateHaversineDistance(prevLat, prevLon, route[i].latitude!!, route[i].longitude!!)
+
+        // Edges within the segment i..j
+        for (k in i until j) {
+            dist += calculateHaversineDistance(
+                route[k].latitude!!, route[k].longitude!!,
+                route[k + 1].latitude!!, route[k + 1].longitude!!
+            )
+        }
+
+        // Edge after j (if there is one)
+        if (j + 1 < route.size) {
+            dist += calculateHaversineDistance(route[j].latitude!!, route[j].longitude!!, route[j + 1].latitude!!, route[j + 1].longitude!!)
+        }
+        return dist
     }
 
     /**
