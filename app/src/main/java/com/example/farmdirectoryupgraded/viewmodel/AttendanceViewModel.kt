@@ -114,7 +114,7 @@ class AttendanceViewModel(
                     taskDescription = taskDescription,
                     notes = notes
                 )
-                attendanceDao.insertAttendanceRecord(record)
+                attendanceDao.insertAttendance(record)
                 _successMessage.value = "Check-in recorded successfully"
                 Log.d(TAG, "Employee $employeeId checked in at ($latitude, $longitude)")
             } catch (e: Exception) {
@@ -153,7 +153,7 @@ class AttendanceViewModel(
                     taskDescription = parsed.taskDescription,
                     notes = "QR Code: $qrCodeData"
                 )
-                attendanceDao.insertAttendanceRecord(record)
+                attendanceDao.insertAttendance(record)
                 _successMessage.value = "Check-in via QR code successful"
                 Log.d(TAG, "Employee ${parsed.employeeId} checked in via QR code")
             } catch (e: Exception) {
@@ -182,7 +182,7 @@ class AttendanceViewModel(
     ) {
         viewModelScope.launch {
             try {
-                val record = attendanceDao.getAttendanceRecordById(recordId)
+                val record = attendanceDao.getAttendanceById(recordId)
                 if (record != null) {
                     val hoursWorked = calculateHoursWorked(record.checkInTime)
                     val updatedRecord = record.copy(
@@ -192,7 +192,7 @@ class AttendanceViewModel(
                         hoursWorked = hoursWorked,
                         notes = if (notes.isNotEmpty()) "${record.notes}\nCheckOut: $notes" else record.notes
                     )
-                    attendanceDao.updateAttendanceRecord(updatedRecord)
+                    attendanceDao.updateAttendance(updatedRecord)
                     _successMessage.value = "Check-out recorded (${String.format("%.1f", hoursWorked)} hours)"
                     Log.d(TAG, "Record $recordId checked out")
                 } else {
