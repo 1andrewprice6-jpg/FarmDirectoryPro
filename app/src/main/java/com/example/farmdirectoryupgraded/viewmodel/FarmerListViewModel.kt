@@ -172,7 +172,7 @@ class FarmerListViewModel(
     fun toggleFavorite(farmer: Farmer) {
         viewModelScope.launch {
             try {
-                farmerDao.updateFavoriteSatus(farmer.id, !farmer.isFavorite)
+                farmerDao.updateFavoriteStatus(farmer.id, !farmer.isFavorite)
                 Log.d(TAG, "Farmer ${farmer.id} favorite toggled")
             } catch (e: Exception) {
                 val errorMsg = "Failed to update favorite: ${e.message}"

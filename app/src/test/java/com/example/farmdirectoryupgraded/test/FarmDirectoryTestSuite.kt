@@ -103,7 +103,7 @@ class FarmDatabaseTest {
     }
 
     @Test
-    fun testToggleFavoriteSatus() = runTest {
+    fun testToggleFavoriteStatus() = runTest {
         val farmer = Farmer(
             name = "John Doe",
             address = "123 Farm Lane",
@@ -112,7 +112,7 @@ class FarmDatabaseTest {
             isFavorite = false
         )
         farmerDao.insertFarmer(farmer)
-        farmerDao.updateFavoriteSatus(1, true)
+        farmerDao.updateFavoriteStatus(1, true)
         val retrieved = farmerDao.getFarmerById(1)
         assertTrue(retrieved?.isFavorite ?: false)
     }
@@ -190,7 +190,7 @@ class FarmerListViewModelTest {
 
     @Test
     fun testToggleFavorite() = runTest {
-        coEvery { farmerDao.updateFavoriteSatus(1, true) } returns Unit
+        coEvery { farmerDao.updateFavoriteStatus(1, true) } returns Unit
 
         val farmer = Farmer(id = 1, name = "Test", address = "Test", phone = "123", isFavorite = false)
         viewModel.toggleFavorite(farmer)

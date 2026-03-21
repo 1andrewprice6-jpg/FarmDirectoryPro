@@ -516,9 +516,7 @@ fun RouteOptimizationScreen(
             val legTimeMinutes = if (legDist != null) (legDist / 30.0 * 60).toLong() else 0L
             RouteStop(
                 farmName = farmer.farmName.ifBlank { farmer.name },
-                distanceFromPrevious = if (index == 0 && legDist != null) {
-                    String.format("%.1f", legDist)
-                } else if (legDist != null) {
+                distanceFromPrevious = if (legDist != null) {
                     String.format("%.1f", legDist)
                 } else {
                     "Start"

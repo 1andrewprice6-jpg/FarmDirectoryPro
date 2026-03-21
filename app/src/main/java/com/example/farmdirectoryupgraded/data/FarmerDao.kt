@@ -79,7 +79,7 @@ interface FarmerDao {
      * Update favorite status for a farmer
      */
     @Query("UPDATE farmers SET isFavorite = :isFavorite WHERE id = :id")
-    suspend fun updateFavoriteSatus(id: Int, isFavorite: Boolean)
+    suspend fun updateFavoriteStatus(id: Int, isFavorite: Boolean)
 
     /**
      * Update farmer GPS location and timestamp
