@@ -36,6 +36,10 @@ class AttendanceViewModel(
         GPS, QR_CODE, NFC, MANUAL, PHOTO, BIOMETRIC, BLUETOOTH
     }
 
+    // Last known GPS coordinates; set from the main thread (e.g. FusedLocationProvider callback)
+    // before a GPS check-in is attempted.
+    var lastKnownLocation: Pair<Double, Double>? = null
+
     // State management
     private val _employees = MutableStateFlow<List<Employee>>(emptyList())
     val employees = _employees.asStateFlow()
