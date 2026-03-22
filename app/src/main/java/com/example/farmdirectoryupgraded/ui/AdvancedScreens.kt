@@ -61,22 +61,25 @@ fun AttendanceScreen(
     // Given I can't easily change ViewModel without re-reading/writing, I'll map here.
     
     val rawRecords by viewModel.attendanceRecords.collectAsState()
-    
-    // SimpleDateFormat for UI mapping
-    val dateFormatter = java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault())
-    
-    val attendanceRecords = rawRecords.map { record ->
-        AttendanceRecord(
-            id = record.id,
-            farmName = record.workLocation ?: "Unknown",
-            method = record.method,
-            timestamp = dateFormatter.format(java.util.Date(record.checkInTime)),
-            notes = record.notes,
-            checkOut = record.checkOutTime?.let { dateFormatter.format(java.util.Date(it)) }
-        )
+
+    // Create SimpleDateFormat once; recreate only if locale changes (rare)
+    val dateFormatter = remember { java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault()) }
+
+    // Re-map only when rawRecords changes
+    val attendanceRecords = remember(rawRecords) {
+        rawRecords.map { record ->
+            AttendanceRecord(
+                id = record.id,
+                farmName = record.workLocation ?: "Unknown",
+                method = record.method,
+                timestamp = dateFormatter.format(java.util.Date(record.checkInTime)),
+                notes = record.notes,
+                checkOut = record.checkOutTime?.let { dateFormatter.format(java.util.Date(it)) }
+            )
+        }
     }
 
-    var selectedMethod by remember { mutableStateOf(AttendanceMethod.GPS) }
+    var selectedMethod by rememberSaveable { mutableStateOf(AttendanceMethod.GPS) }
     var farmName by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     
@@ -173,23 +176,14 @@ fun AttendanceScreen(
                         Button(
                             onClick = {
                                 if (farmName.isNotBlank()) {
-                                    // AttendanceViewModel.checkInWithGPS requires params: 
-                                    // employeeId, lat, lon, workLocation, task, notes.
-                                    // But `recordAttendance` was the old method. 
-                                    // AttendanceViewModel has `checkInWithGPS` and `checkInWithQRCode`.
-                                    // It does NOT have a generic `recordAttendance` that matches the old signature (Method, Location, Notes).
-                                    // I need to adapt.
-                                    // Or better, I'll use a placeholder logic or call checkInWithGPS with dummy coords if GPS not available.
-                                    // The `AttendanceMethod` enum here suggests different methods.
-                                    
-                                    // For now, let's try to find the currently selected employee ID from the VM
-                                    // AttendanceViewModel has `selectedEmployee`.
                                     val emp = viewModel.selectedEmployee.value
                                     if (emp != null) {
+                                        // Guard: require real coordinates; block check-in if none are available
+                                        val loc = viewModel.lastKnownLocation ?: return@Button
                                         viewModel.checkInWithGPS(
                                             employeeId = emp.id,
-                                            latitude = 0.0, // Placeholder
-                                            longitude = 0.0, // Placeholder
+                                            latitude = loc.first,
+                                            longitude = loc.second,
                                             workLocation = farmName,
                                             notes = notes
                                         )
@@ -217,7 +211,7 @@ fun AttendanceScreen(
                 )
             }
 
-            items(attendanceRecords) { record ->
+            items(attendanceRecords, key = { it.id }) { record ->
                 AttendanceRecordCard(record)
             }
         }
@@ -286,7 +280,8 @@ fun ReconcileScreen(
     viewModel: LocationViewModel,
     onBack: () -> Unit
 ) {
-    var isLoading by remember { mutableStateOf(false) }
+    // Use the ViewModel's isCalculating so the spinner correctly reflects async completion
+    val isCalculating by viewModel.isCalculating.collectAsState()
     
     // Map LocationViewModel.ReconcileResult to UI ReconcileResult
     val vmResult by viewModel.reconcileResult.collectAsState()
@@ -350,25 +345,22 @@ fun ReconcileScreen(
 
                         Button(
                             onClick = {
-                                isLoading = true
                                 val loc = viewModel.getCurrentLocation()
                                 if (loc != null) {
                                     currentLocation = Pair(loc.latitude, loc.longitude)
                                     viewModel.reconcileFarm(loc.latitude, loc.longitude)
                                 } else {
-                                    // Mock location for testing if null (Hiddenite, NC)
+                                    // Fallback location for testing (Hiddenite, NC)
                                     val mockLat = 35.7796
                                     val mockLon = -81.3361
                                     currentLocation = Pair(mockLat, mockLon)
                                     viewModel.reconcileFarm(mockLat, mockLon)
                                 }
-                                // Simulate loading delay or wait for result
-                                isLoading = false 
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !isLoading
+                            enabled = !isCalculating
                         ) {
-                            if (isLoading) {
+                            if (isCalculating) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(20.dp),
                                     strokeWidth = 2.dp
@@ -492,39 +484,45 @@ fun RouteOptimizationScreen(
     onBack: () -> Unit
 ) {
     val farmers by farmerListViewModel.farmers.collectAsState(initial = emptyList())
-    var selectedFarmers by remember { mutableStateOf<Set<Farmer>>(emptySet()) }
+    // Store farmer IDs instead of full Farmer objects for lighter equality checks
+    var selectedFarmers by remember { mutableStateOf<Set<Int>>(emptySet()) }
     
     val vmOptimizedRoute by locationViewModel.optimizedRoute.collectAsState()
     val isOptimizing by locationViewModel.isCalculating.collectAsState()
-    
-    // Map VM OptimizedRoute to UI OptimizedRoute
-    val optimizedRoute = vmOptimizedRoute?.let { route ->
-        // Convert milliseconds to readable time
-        val totalMinutes = route.estimatedTime / (1000 * 60)
-        val estimatedTimeStr = if (totalMinutes > 60) {
-            "${totalMinutes / 60}h ${totalMinutes % 60}m"
-        } else {
-            "$totalMinutes minutes"
-        }
-        
-        // Calculate fuel cost (approx $1.50/L, 8L/100km)
-        val fuelCost = (route.totalDistance / 100.0) * 8.0 * 1.50
 
-        // Create stops list
-        val stops = route.farmers.mapIndexed { index, f: Farmer -> 
-             RouteStop(
-                 farmName = f.farmName.ifBlank { f.name },
-                 distanceFromPrevious = if (index == 0) "Start" else "...", // Simplified
-                 timeFromPrevious = if (index == 0) "-" else "..."
-             )
-        }
+    // Pre-filter farmers with GPS coordinates; only recompute when farmers list changes
+    val locatableFarmers = remember(farmers) { farmers.filter { it.latitude != null && it.longitude != null } }
 
-        OptimizedRoute(
-            stops = stops,
-            totalDistance = route.totalDistance,
-            estimatedTime = estimatedTimeStr,
-            fuelCost = fuelCost
-        )
+    // Memoize expensive route formatting; only recompute when the VM route changes
+    val optimizedRoute = remember(vmOptimizedRoute) {
+        vmOptimizedRoute?.let { route ->
+            // Convert milliseconds to readable time
+            val totalMinutes = route.estimatedTime / (1000 * 60)
+            val estimatedTimeStr = if (totalMinutes > 60) {
+                "${totalMinutes / 60}h ${totalMinutes % 60}m"
+            } else {
+                "$totalMinutes minutes"
+            }
+
+            // Calculate fuel cost (approx $1.50/L, 8L/100km)
+            val fuelCost = (route.totalDistance / 100.0) * 8.0 * 1.50
+
+            // Create stops list
+            val stops = route.farmers.mapIndexed { index, f: Farmer ->
+                RouteStop(
+                    farmName = f.farmName.ifBlank { f.name },
+                    distanceFromPrevious = if (index == 0) "Start" else "...",
+                    timeFromPrevious = if (index == 0) "-" else "..."
+                )
+            }
+
+            OptimizedRoute(
+                stops = stops,
+                totalDistance = route.totalDistance,
+                estimatedTime = estimatedTimeStr,
+                fuelCost = fuelCost
+            )
+        }
     }
 
     Scaffold(
@@ -575,8 +573,12 @@ fun RouteOptimizationScreen(
 
                         Button(
                             onClick = {
-                                // Default start at Hiddenite, NC
-                                locationViewModel.optimizeRoute(35.7796, -81.3361, selectedFarmers.toList())
+                                // Reconstruct the selected Farmer objects from IDs
+                                locationViewModel.optimizeRoute(
+                                    35.7796,
+                                    -81.3361,
+                                    farmers.filter { selectedFarmers.contains(it.id) }
+                                )
                             },
                             modifier = Modifier.fillMaxWidth(),
                             enabled = !isOptimizing && selectedFarmers.isNotEmpty()
@@ -604,7 +606,7 @@ fun RouteOptimizationScreen(
                 )
             }
 
-            items(farmers.filter { f -> f.latitude != null && f.longitude != null }) { farmer ->
+            items(locatableFarmers, key = { it.id }) { farmer ->
                 Card(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -615,12 +617,12 @@ fun RouteOptimizationScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
-                            checked = selectedFarmers.contains(farmer),
+                            checked = selectedFarmers.contains(farmer.id),
                             onCheckedChange = { isChecked ->
                                 selectedFarmers = if (isChecked) {
-                                    selectedFarmers + farmer
+                                    selectedFarmers + farmer.id
                                 } else {
-                                    selectedFarmers - farmer
+                                    selectedFarmers - farmer.id
                                 }
                             }
                         )
@@ -676,7 +678,7 @@ fun RouteOptimizationScreen(
                     }
                 }
 
-                items(route.stops.withIndex().toList()) { (index, stop) ->
+                items(route.stops.withIndex().toList(), key = { (index, _) -> index }) { (index, stop) ->
                     Card(
                         modifier = Modifier.fillMaxWidth()
                     ) {
