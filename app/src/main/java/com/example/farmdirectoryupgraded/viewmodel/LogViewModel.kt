@@ -83,7 +83,7 @@ class LogViewModel(
                 // Get all logs directly from DB (suspend function needed in DAO, but currently it returns Flow)
                 // We'll collect the current value of the flow for export
                 val currentLogs = logs.value
-                
+
                 if (currentLogs.isEmpty()) {
                     addLog("System", "WARNING", "Export failed", "No logs to export")
                     return@launch
@@ -110,7 +110,6 @@ class LogViewModel(
 
                 _shareFileEvent.emit(uri)
                 addLog("System", "SUCCESS", "Logs exported", fileName)
-
             } catch (e: Exception) {
                 addLog("System", "ERROR", "Export failed", e.message ?: "Unknown error")
             }
