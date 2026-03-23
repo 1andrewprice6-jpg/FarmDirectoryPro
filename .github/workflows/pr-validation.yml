@@ -196,6 +196,9 @@ jobs:
         ./gradlew dependencies > dependencies.txt
         echo "### Dependency Tree Generated" >> $GITHUB_STEP_SUMMARY
 
+    - name: Clear JAVA_HOME for Docker-based security action
+      run: echo "JAVA_HOME=" >> $GITHUB_ENV
+
     - name: OWASP Dependency Check
       uses: dependency-check/Dependency-Check_Action@main
       id: depcheck

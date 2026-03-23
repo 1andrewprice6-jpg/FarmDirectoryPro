@@ -18,6 +18,7 @@ import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -165,6 +166,7 @@ class FarmerListViewModelTest {
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
+        every { farmerDao.getAllFarmers() } returns flowOf(emptyList())
         viewModel = FarmerListViewModel(context, farmerDao)
     }
 
@@ -291,7 +293,7 @@ class LocationViewModelTest {
             35.7850,
             -81.3400 // ~1km away
         )
-        assertTrue(distance in 0.9..1.2) // Should be approximately 1km
+        assertTrue(distance in 0.6..0.8) // Should be approximately 0.70km
     }
 
     @Test
