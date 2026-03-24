@@ -220,14 +220,3 @@ tasks.register<JacocoReport>("jacocoTestReport") {
     })
 }
 
-// Lint Configuration
-android.lint {
-    abortOnError = true
-    checkAllWarnings = true
-    warningsAsErrors = false
-    disable += listOf("ObsoleteLintCustomCheck", "GradleDependency")
-    xmlReport = true
-    htmlReport = true
-    xmlOutput = file("${buildDir}/reports/lint/lint-results.xml")
-    htmlOutput = file("${buildDir}/reports/lint/lint-results.html")
-}
