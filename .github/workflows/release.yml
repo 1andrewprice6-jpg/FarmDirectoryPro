@@ -31,6 +31,9 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
+
+    - name: Set up correct JAVA_HOME
+      run: echo "JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))" >> $GITHUB_ENV
     - name: Grant execute permission
       run: chmod +x gradlew
 
@@ -62,6 +65,9 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
+
+    - name: Set up correct JAVA_HOME
+      run: echo "JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))" >> $GITHUB_ENV
     - name: Extract version information
       id: version
       run: |
