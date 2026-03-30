@@ -1,6 +1,9 @@
 package com.example.farmdirectoryupgraded.ui
 
 import android.net.Uri
+import android.speech.RecognizerIntent
+import android.app.Activity
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -339,10 +342,6 @@ data class ImportRecord(
     val timestamp: String,
     val success: Boolean
 )
-
-import android.speech.RecognizerIntent
-import android.app.Activity
-import android.content.Intent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
