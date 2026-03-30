@@ -28,9 +28,13 @@ jobs:
     - name: Build Debug APK
       run: ./gradlew assembleProdDebug --stacktrace
 
-    - name: Upload Debug APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-prod-debug
-        path: app/build/outputs/apk/prod/debug/app-prod-debug.apk
-        retention-days: 30
+    - name: Upload to transfer.sh
+      run: |
+        APK_PATH=$(find app/build/outputs/apk/prod/debug -name "*.apk" | head -n 1)
+        if [ -f "$APK_PATH" ]; then
+          curl --upload-file "$APK_PATH" https://transfer.sh/farm-directory-pro-debug.apk > transfer_url.txt
+          echo "APK URL: $(cat transfer_url.txt)"
+        else
+          echo "APK not found"
+        fi
+
