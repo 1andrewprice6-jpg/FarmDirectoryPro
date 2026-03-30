@@ -127,14 +127,14 @@ jobs:
         done
 
     - name: Upload APK Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: release-apk
         path: app/build/outputs/apk/prod/release/*.apk
         retention-days: 90
 
     - name: Upload AAB Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: release-aab
         path: app/build/outputs/bundle/prodRelease/*.aab
@@ -147,7 +147,7 @@ jobs:
         cat checksums.txt
 
     - name: Upload checksums
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: checksums
         path: app/build/outputs/apk/prod/release/checksums.txt
