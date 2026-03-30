@@ -72,6 +72,7 @@ android {
 
     buildFeatures {
         buildConfig = true
+        compose = true
     }
     testOptions {
         unitTests {
@@ -86,13 +87,10 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-    buildFeatures {
-        compose = true
-    }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.8"
     }
-    packagingOptions {
+    packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
@@ -103,7 +101,14 @@ android {
         disable += "InvalidPackage"
         // Ignore ChromeOS hardware feature warnings
         disable += "PermissionImpliesUnsupportedChromeOsHardware"
+        disable += listOf("ObsoleteLintCustomCheck", "GradleDependency")
         abortOnError = false
+        checkAllWarnings = true
+        warningsAsErrors = false
+        xmlReport = true
+        htmlReport = true
+        xmlOutput = file("$buildDir/reports/lint/lint-results.xml")
+        htmlOutput = file("$buildDir/reports/lint/lint-results.html")
     }
 }
 
@@ -208,7 +213,7 @@ tasks.register<JacocoReport>("jacocoTestReport") {
         "**/data/models/**"
     )
 
-    val debugTree = fileTree("${buildDir}/tmp/kotlin-classes/devDebug") {
+    val debugTree = fileTree("$buildDir/tmp/kotlin-classes/devDebug") {
         exclude(fileFilter)
     }
     val mainSrc = "${project.projectDir}/src/main/java"
@@ -218,16 +223,4 @@ tasks.register<JacocoReport>("jacocoTestReport") {
     executionData.setFrom(fileTree(buildDir) {
         include("jacoco/testDevDebugUnitTest.exec")
     })
-}
-
-// Lint Configuration
-android.lint {
-    abortOnError = true
-    checkAllWarnings = true
-    warningsAsErrors = false
-    disable += listOf("ObsoleteLintCustomCheck", "GradleDependency")
-    xmlReport = true
-    htmlReport = true
-    xmlOutput = file("${buildDir}/reports/lint/lint-results.xml")
-    htmlOutput = file("${buildDir}/reports/lint/lint-results.html")
 }
