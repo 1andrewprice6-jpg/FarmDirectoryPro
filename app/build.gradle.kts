@@ -107,8 +107,8 @@ android {
         warningsAsErrors = false
         xmlReport = true
         htmlReport = true
-        xmlOutput = file("$buildDir/reports/lint/lint-results.xml")
-        htmlOutput = file("$buildDir/reports/lint/lint-results.html")
+        xmlOutput = layout.buildDirectory.file("reports/lint/lint-results.xml").get().asFile
+        htmlOutput = layout.buildDirectory.file("reports/lint/lint-results.html").get().asFile
     }
 }
 
@@ -213,14 +213,14 @@ tasks.register<JacocoReport>("jacocoTestReport") {
         "**/data/models/**"
     )
 
-    val debugTree = fileTree("$buildDir/tmp/kotlin-classes/devDebug") {
+    val debugTree = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/devDebug").get()) {
         exclude(fileFilter)
     }
     val mainSrc = "${project.projectDir}/src/main/java"
 
     sourceDirectories.setFrom(files(mainSrc))
     classDirectories.setFrom(files(debugTree))
-    executionData.setFrom(fileTree(buildDir) {
+    executionData.setFrom(fileTree(layout.buildDirectory.get()) {
         include("jacoco/testDevDebugUnitTest.exec")
     })
 }
