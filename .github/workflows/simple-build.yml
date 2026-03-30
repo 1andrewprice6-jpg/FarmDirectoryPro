@@ -28,13 +28,12 @@ jobs:
     - name: Build Debug APK
       run: ./gradlew assembleProdDebug --stacktrace
 
-    - name: Upload to transfer.sh
+    - name: Create Release and Upload APK
       run: |
+        TAG="v1.0.${{ github.run_number }}"
         APK_PATH=$(find app/build/outputs/apk/prod/debug -name "*.apk" | head -n 1)
-        if [ -f "$APK_PATH" ]; then
-          curl --upload-file "$APK_PATH" https://transfer.sh/farm-directory-pro-debug.apk > transfer_url.txt
-          echo "APK URL: $(cat transfer_url.txt)"
-        else
-          echo "APK not found"
-        fi
+        gh release create "$TAG" "$APK_PATH" --title "Farm Directory Pro $TAG" --notes "Automated build for installation on device."
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
