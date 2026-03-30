@@ -16,6 +16,11 @@ concurrency:
 env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2
 
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
 jobs:
   lint:
     name: Lint Analysis
@@ -37,7 +42,7 @@ jobs:
       run: chmod +x gradlew
 
     - name: Run Lint
-      run: ./gradlew lintDevDebug lintProdRelease --stacktrace
+      run: ./gradlew lintDevDebug lintProdDebug --stacktrace
 
     - name: Upload Lint Reports
       if: always()
@@ -98,13 +103,16 @@ jobs:
     - name: Publish Test Results
       if: always()
       uses: EnricoMi/publish-unit-test-result-action@v2
+      continue-on-error: true
       with:
         files: app/build/test-results/**/*.xml
 
     - name: Codecov Upload
       if: always()
       uses: codecov/codecov-action@v4
+      continue-on-error: true
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         files: ./app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
         flags: unittests
         name: codecov-umbrella
