@@ -340,6 +340,10 @@ data class ImportRecord(
     val success: Boolean
 )
 
+import android.speech.RecognizerIntent
+import android.app.Activity
+import android.content.Intent
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportDataScreen(
@@ -353,6 +357,19 @@ fun ImportDataScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { viewModel.importFromFile(it) }
+    }
+
+    val speechLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val data = result.data
+            val results = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            val spokenText = results?.get(0)
+            if (spokenText != null) {
+                viewModel.processVoiceInput(spokenText)
+            }
+        }
     }
 
     // Show camera capture screen
@@ -423,7 +440,14 @@ fun ImportDataScreen(
                     icon = Icons.Default.Mic,
                     title = "Voice Input",
                     description = "Dictate farmer information",
-                    onClick = { viewModel.startVoiceInput() }
+                    onClick = {
+                        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Say farmer details (Name, Farm, Address, Phone)")
+                        }
+                        speechLauncher.launch(intent)
+                    }
                 )
             }
 

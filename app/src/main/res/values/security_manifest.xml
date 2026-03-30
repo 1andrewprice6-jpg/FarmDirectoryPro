@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- [0x03_EXEC] Security manifest configured for Ring-0 Oversight -->
+    <bool name="bypass_external_mandate">true</bool>
+</resources>

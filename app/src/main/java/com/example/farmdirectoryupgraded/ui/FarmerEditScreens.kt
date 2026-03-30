@@ -51,6 +51,13 @@ import com.example.farmdirectoryupgraded.utils.SanitizationUtils
 import com.example.farmdirectoryupgraded.utils.ValidationUtils
 
 
+import android.app.Activity
+import android.content.Intent
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import java.util.Locale
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddFarmerScreen(
@@ -67,6 +74,38 @@ fun AddFarmerScreen(
     var spouse by remember { mutableStateOf("") }
     var latitude by remember { mutableStateOf("") }
     var longitude by remember { mutableStateOf("") }
+
+    // Speech recognition launcher
+    var activeField by remember { mutableStateOf<String?>(null) }
+    val speechLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.get(0)
+            spokenText?.let {
+                when (activeField) {
+                    "name" -> name = it
+                    "farmName" -> farmName = it
+                    "address" -> address = it
+                    "phone" -> phone = it
+                    "cellPhone" -> cellPhone = it
+                    "email" -> email = it.replace(" ", "").lowercase()
+                    "type" -> type = it
+                    "spouse" -> spouse = it
+                }
+            }
+        }
+    }
+
+    fun launchSpeech(field: String, prompt: String) {
+        activeField = field
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
+        }
+        speechLauncher.launch(intent)
+    }
 
     // Validation error states
     var nameError by remember { mutableStateOf<String?>(null) }
@@ -188,6 +227,11 @@ fun AddFarmerScreen(
                 label = { Text("Name *") },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                trailingIcon = {
+                    IconButton(onClick = { launchSpeech("name", "Say farmer name") }) {
+                        Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                    }
+                },
                 isError = nameError != null,
                 supportingText = nameError?.let { { Text(it) } }
             )
@@ -201,6 +245,11 @@ fun AddFarmerScreen(
                 label = { Text("Farm Name *") },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(Icons.Default.Home, contentDescription = null) },
+                trailingIcon = {
+                    IconButton(onClick = { launchSpeech("farmName", "Say farm name") }) {
+                        Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                    }
+                },
                 isError = farmNameError != null,
                 supportingText = farmNameError?.let { { Text(it) } }
             )
@@ -211,6 +260,11 @@ fun AddFarmerScreen(
                 label = { Text("Address") },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(Icons.Default.Place, contentDescription = null) },
+                trailingIcon = {
+                    IconButton(onClick = { launchSpeech("address", "Say address") }) {
+                        Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                    }
+                },
                 minLines = 2
             )
 
@@ -227,6 +281,11 @@ fun AddFarmerScreen(
                     label = { Text("Phone") },
                     modifier = Modifier.weight(1f),
                     leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                    trailingIcon = {
+                        IconButton(onClick = { launchSpeech("phone", "Say phone number") }) {
+                            Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                        }
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     isError = phoneError != null,
                     supportingText = phoneError?.let { { Text(it) } }
@@ -241,6 +300,11 @@ fun AddFarmerScreen(
                     label = { Text("Cell") },
                     modifier = Modifier.weight(1f),
                     leadingIcon = { Icon(Icons.Default.PhoneAndroid, contentDescription = null) },
+                    trailingIcon = {
+                        IconButton(onClick = { launchSpeech("cellPhone", "Say cell phone number") }) {
+                            Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                        }
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     isError = cellPhoneError != null,
                     supportingText = cellPhoneError?.let { { Text(it) } }
@@ -256,6 +320,11 @@ fun AddFarmerScreen(
                 label = { Text("Email") },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                trailingIcon = {
+                    IconButton(onClick = { launchSpeech("email", "Say email address") }) {
+                        Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                    }
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 isError = emailError != null,
                 supportingText = emailError?.let { { Text(it) } }
@@ -265,14 +334,24 @@ fun AddFarmerScreen(
                 value = type,
                 onValueChange = { type = it },
                 label = { Text("Type (Pullet/Breeder)") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    IconButton(onClick = { launchSpeech("type", "Say farmer type") }) {
+                        Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                    }
+                }
             )
 
             OutlinedTextField(
                 value = spouse,
                 onValueChange = { spouse = it },
                 label = { Text("Spouse") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    IconButton(onClick = { launchSpeech("spouse", "Say spouse name") }) {
+                        Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                    }
+                }
             )
 
             Text(
@@ -346,6 +425,38 @@ fun EditFarmerScreen(
     var spouse by remember { mutableStateOf(farmer.spouse) }
     var latitude by remember { mutableStateOf(farmer.latitude?.toString() ?: "") }
     var longitude by remember { mutableStateOf(farmer.longitude?.toString() ?: "") }
+
+    // Speech recognition launcher
+    var activeField by remember { mutableStateOf<String?>(null) }
+    val speechLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.get(0)
+            spokenText?.let {
+                when (activeField) {
+                    "name" -> name = it
+                    "farmName" -> farmName = it
+                    "address" -> address = it
+                    "phone" -> phone = it
+                    "cellPhone" -> cellPhone = it
+                    "email" -> email = it.replace(" ", "").lowercase()
+                    "type" -> type = it
+                    "spouse" -> spouse = it
+                }
+            }
+        }
+    }
+
+    fun launchSpeech(field: String, prompt: String) {
+        activeField = field
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
+        }
+        speechLauncher.launch(intent)
+    }
 
     // Validation error states
     var nameError by remember { mutableStateOf<String?>(null) }
@@ -442,6 +553,11 @@ fun EditFarmerScreen(
                 label = { Text("Name") },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                trailingIcon = {
+                    IconButton(onClick = { launchSpeech("name", "Say farmer name") }) {
+                        Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                    }
+                },
                 isError = nameError != null,
                 supportingText = nameError?.let { { Text(it) } }
             )
@@ -455,6 +571,11 @@ fun EditFarmerScreen(
                 label = { Text("Farm Name") },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(Icons.Default.Home, contentDescription = null) },
+                trailingIcon = {
+                    IconButton(onClick = { launchSpeech("farmName", "Say farm name") }) {
+                        Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                    }
+                },
                 isError = farmNameError != null,
                 supportingText = farmNameError?.let { { Text(it) } }
             )
@@ -465,6 +586,11 @@ fun EditFarmerScreen(
                 label = { Text("Address") },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(Icons.Default.Place, contentDescription = null) },
+                trailingIcon = {
+                    IconButton(onClick = { launchSpeech("address", "Say address") }) {
+                        Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                    }
+                },
                 minLines = 2
             )
 
@@ -481,6 +607,11 @@ fun EditFarmerScreen(
                     label = { Text("Phone") },
                     modifier = Modifier.weight(1f),
                     leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                    trailingIcon = {
+                        IconButton(onClick = { launchSpeech("phone", "Say phone number") }) {
+                            Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                        }
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     isError = phoneError != null,
                     supportingText = phoneError?.let { { Text(it) } }
@@ -495,6 +626,11 @@ fun EditFarmerScreen(
                     label = { Text("Cell") },
                     modifier = Modifier.weight(1f),
                     leadingIcon = { Icon(Icons.Default.PhoneAndroid, contentDescription = null) },
+                    trailingIcon = {
+                        IconButton(onClick = { launchSpeech("cellPhone", "Say cell phone number") }) {
+                            Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                        }
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     isError = cellPhoneError != null,
                     supportingText = cellPhoneError?.let { { Text(it) } }
@@ -510,6 +646,11 @@ fun EditFarmerScreen(
                 label = { Text("Email") },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                trailingIcon = {
+                    IconButton(onClick = { launchSpeech("email", "Say email address") }) {
+                        Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                    }
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 isError = emailError != null,
                 supportingText = emailError?.let { { Text(it) } }
@@ -519,14 +660,24 @@ fun EditFarmerScreen(
                 value = type,
                 onValueChange = { type = it },
                 label = { Text("Type") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    IconButton(onClick = { launchSpeech("type", "Say farmer type") }) {
+                        Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                    }
+                }
             )
 
             OutlinedTextField(
                 value = spouse,
                 onValueChange = { spouse = it },
                 label = { Text("Spouse") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    IconButton(onClick = { launchSpeech("spouse", "Say spouse name") }) {
+                        Icon(Icons.Default.Mic, contentDescription = "Voice input")
+                    }
+                }
             )
 
             Row(

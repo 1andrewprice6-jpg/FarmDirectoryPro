@@ -415,7 +415,65 @@ class FarmerListViewModel(
         )
     }
 
+    fun processVoiceInput(text: String) {
+        viewModelScope.launch {
+            try {
+                val farmers = parseVoiceText(text)
+                if (farmers.isNotEmpty()) {
+                    farmerDao.insertFarmers(farmers)
+                    addImportRecord(ImportMethod.VOICE.name, farmers.size, true)
+                    _successMessage.value = "Voice import successful: ${farmers.size} farmer(s) added"
+                } else {
+                    _errorMessage.value = "Could not parse any farmer data from voice input."
+                    addImportRecord(ImportMethod.VOICE.name, 0, false)
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = "Voice input processing failed: ${e.message}"
+                addImportRecord(ImportMethod.VOICE.name, 0, false)
+            }
+        }
+    }
+
+    private fun parseVoiceText(text: String): List<Farmer> {
+        // Simple natural language parser for farmer data
+        // Expected patterns: "Name [Name] Farm [FarmName] Address [Address] Phone [Phone]"
+        val farmers = mutableListOf<Farmer>()
+        
+        // Split by keywords that might indicate a new farmer record if dictating multiple
+        val chunks = text.split(Regex("(?i)next farmer|new farmer")).filter { it.isNotBlank() }
+        
+        for (chunk in chunks) {
+            val name = extractValue(chunk, "name")
+            val farmName = extractValue(chunk, "farm|farm name")
+            val address = extractValue(chunk, "address|location")
+            val phone = extractValue(chunk, "phone|number")
+            val email = extractValue(chunk, "email")
+            val type = extractValue(chunk, "type")
+
+            if (name.isNotBlank() || farmName.isNotBlank()) {
+                farmers.add(
+                    Farmer(
+                        name = name,
+                        farmName = farmName,
+                        address = address,
+                        phone = phone,
+                        email = email,
+                        type = if (type.isNotBlank()) type else "Unknown"
+                    )
+                )
+            }
+        }
+        return farmers
+    }
+
+    private fun extractValue(text: String, key: String): String {
+        val regex = Regex("(?i)$key\\s+(is\\s+)?([^,.]+)", RegexOption.IGNORE_CASE)
+        val match = regex.find(text)
+        return match?.groupValues?.get(2)?.trim() ?: ""
+    }
+
     fun startVoiceInput() {
-        // Placeholder
+        // This is now handled by the UI layer triggering a Speech Recognition Intent
+        // and calling processVoiceInput with the results.
     }
 }
