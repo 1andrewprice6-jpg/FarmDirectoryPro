@@ -28,7 +28,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -288,7 +291,7 @@ fun AddFarmerScreen(
 
             val healthStatuses = listOf("HEALTHY", "SICK", "RECOVERING", "CRITICAL", "DECEASED")
             var healthStatusExpanded by remember { mutableStateOf(false) }
-            androidx.compose.material3.ExposedDropdownMenuBox(
+            ExposedDropdownMenuBox(
                 expanded = healthStatusExpanded,
                 onExpandedChange = { healthStatusExpanded = it }
             ) {
@@ -298,18 +301,18 @@ fun AddFarmerScreen(
                     readOnly = true,
                     label = { Text("Health Status") },
                     trailingIcon = {
-                        androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon(expanded = healthStatusExpanded)
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = healthStatusExpanded)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor()
                 )
-                androidx.compose.material3.ExposedDropdownMenu(
+                ExposedDropdownMenu(
                     expanded = healthStatusExpanded,
                     onDismissRequest = { healthStatusExpanded = false }
                 ) {
                     healthStatuses.forEach { status ->
-                        androidx.compose.material3.DropdownMenuItem(
+                        DropdownMenuItem(
                             text = { Text(status) },
                             onClick = {
                                 healthStatus = status
@@ -597,7 +600,7 @@ fun EditFarmerScreen(
 
             val healthStatuses = listOf("HEALTHY", "SICK", "RECOVERING", "CRITICAL", "DECEASED")
             var healthStatusExpanded by remember { mutableStateOf(false) }
-            androidx.compose.material3.ExposedDropdownMenuBox(
+            ExposedDropdownMenuBox(
                 expanded = healthStatusExpanded,
                 onExpandedChange = { healthStatusExpanded = it }
             ) {
@@ -607,18 +610,18 @@ fun EditFarmerScreen(
                     readOnly = true,
                     label = { Text("Health Status") },
                     trailingIcon = {
-                        androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon(expanded = healthStatusExpanded)
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = healthStatusExpanded)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor()
                 )
-                androidx.compose.material3.ExposedDropdownMenu(
+                ExposedDropdownMenu(
                     expanded = healthStatusExpanded,
                     onDismissRequest = { healthStatusExpanded = false }
                 ) {
                     healthStatuses.forEach { status ->
-                        androidx.compose.material3.DropdownMenuItem(
+                        DropdownMenuItem(
                             text = { Text(status) },
                             onClick = {
                                 healthStatus = status
