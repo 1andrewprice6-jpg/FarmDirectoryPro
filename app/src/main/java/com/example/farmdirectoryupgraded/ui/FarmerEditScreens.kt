@@ -65,6 +65,9 @@ fun AddFarmerScreen(
     var email by remember { mutableStateOf("") }
     var type by remember { mutableStateOf("") }
     var spouse by remember { mutableStateOf("") }
+    var company by remember { mutableStateOf("") }
+    var healthStatus by remember { mutableStateOf("HEALTHY") }
+    var healthNotes by remember { mutableStateOf("") }
     var latitude by remember { mutableStateOf("") }
     var longitude by remember { mutableStateOf("") }
 
@@ -131,11 +134,12 @@ fun AddFarmerScreen(
                 email = SanitizationUtils.sanitizeEmail(email),
                 type = SanitizationUtils.sanitizeText(type),
                 spouse = SanitizationUtils.sanitizeText(spouse),
+                company = SanitizationUtils.sanitizeText(company),
                 latitude = latitude.toDoubleOrNull(),
                 longitude = longitude.toDoubleOrNull(),
                 isFavorite = false,
-                healthStatus = "HEALTHY",
-                healthNotes = ""
+                healthStatus = healthStatus,
+                healthNotes = SanitizationUtils.sanitizeText(healthNotes)
             )
             onSave(newFarmer)
         }
@@ -275,6 +279,55 @@ fun AddFarmerScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            OutlinedTextField(
+                value = company,
+                onValueChange = { company = it },
+                label = { Text("Company (e.g. Perdue, Mountaire)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            val healthStatuses = listOf("HEALTHY", "SICK", "RECOVERING", "CRITICAL", "DECEASED")
+            var healthStatusExpanded by remember { mutableStateOf(false) }
+            androidx.compose.material3.ExposedDropdownMenuBox(
+                expanded = healthStatusExpanded,
+                onExpandedChange = { healthStatusExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = healthStatus,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Health Status") },
+                    trailingIcon = {
+                        androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon(expanded = healthStatusExpanded)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                androidx.compose.material3.ExposedDropdownMenu(
+                    expanded = healthStatusExpanded,
+                    onDismissRequest = { healthStatusExpanded = false }
+                ) {
+                    healthStatuses.forEach { status ->
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text(status) },
+                            onClick = {
+                                healthStatus = status
+                                healthStatusExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = healthNotes,
+                onValueChange = { healthNotes = it },
+                label = { Text("Health Notes") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2
+            )
+
             Text(
                 text = "GPS Coordinates (Optional)",
                 style = MaterialTheme.typography.titleMedium,
@@ -344,6 +397,9 @@ fun EditFarmerScreen(
     var email by remember { mutableStateOf(farmer.email) }
     var type by remember { mutableStateOf(farmer.type) }
     var spouse by remember { mutableStateOf(farmer.spouse) }
+    var company by remember { mutableStateOf(farmer.company) }
+    var healthStatus by remember { mutableStateOf(farmer.healthStatus) }
+    var healthNotes by remember { mutableStateOf(farmer.healthNotes) }
     var latitude by remember { mutableStateOf(farmer.latitude?.toString() ?: "") }
     var longitude by remember { mutableStateOf(farmer.longitude?.toString() ?: "") }
 
@@ -397,6 +453,9 @@ fun EditFarmerScreen(
                 email = SanitizationUtils.sanitizeEmail(email),
                 type = SanitizationUtils.sanitizeText(type),
                 spouse = SanitizationUtils.sanitizeText(spouse),
+                company = SanitizationUtils.sanitizeText(company),
+                healthStatus = healthStatus,
+                healthNotes = SanitizationUtils.sanitizeText(healthNotes),
                 latitude = latitude.toDoubleOrNull(),
                 longitude = longitude.toDoubleOrNull()
             )
@@ -527,6 +586,55 @@ fun EditFarmerScreen(
                 onValueChange = { spouse = it },
                 label = { Text("Spouse") },
                 modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = company,
+                onValueChange = { company = it },
+                label = { Text("Company (e.g. Perdue, Mountaire)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            val healthStatuses = listOf("HEALTHY", "SICK", "RECOVERING", "CRITICAL", "DECEASED")
+            var healthStatusExpanded by remember { mutableStateOf(false) }
+            androidx.compose.material3.ExposedDropdownMenuBox(
+                expanded = healthStatusExpanded,
+                onExpandedChange = { healthStatusExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = healthStatus,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Health Status") },
+                    trailingIcon = {
+                        androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon(expanded = healthStatusExpanded)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                androidx.compose.material3.ExposedDropdownMenu(
+                    expanded = healthStatusExpanded,
+                    onDismissRequest = { healthStatusExpanded = false }
+                ) {
+                    healthStatuses.forEach { status ->
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text(status) },
+                            onClick = {
+                                healthStatus = status
+                                healthStatusExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = healthNotes,
+                onValueChange = { healthNotes = it },
+                label = { Text("Health Notes") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2
             )
 
             Row(
