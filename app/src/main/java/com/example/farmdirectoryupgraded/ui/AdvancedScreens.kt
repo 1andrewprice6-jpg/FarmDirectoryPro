@@ -219,23 +219,15 @@ fun AttendanceScreen(
                             onClick = {
                                 val emp = selectedEmployee
                                 if (emp != null && farmName.isNotBlank()) {
-                                    if (selectedMethod == AttendanceMethod.GPS) {
-                                        val loc = viewModel.lastKnownLocation
-                                        if (loc != null) {
-                                            viewModel.checkInWithGPS(
-                                                employeeId = emp.id,
-                                                latitude = loc.first,
-                                                longitude = loc.second,
-                                                workLocation = farmName,
-                                                notes = notes
-                                            )
-                                        } else {
-                                            viewModel.checkInManual(
-                                                employeeId = emp.id,
-                                                workLocation = farmName,
-                                                notes = notes
-                                            )
-                                        }
+                                    val loc = if (selectedMethod == AttendanceMethod.GPS) viewModel.lastKnownLocation else null
+                                    if (loc != null) {
+                                        viewModel.checkInWithGPS(
+                                            employeeId = emp.id,
+                                            latitude = loc.first,
+                                            longitude = loc.second,
+                                            workLocation = farmName,
+                                            notes = notes
+                                        )
                                     } else {
                                         viewModel.checkInManual(
                                             employeeId = emp.id,
@@ -1422,7 +1414,7 @@ fun EmployeeListScreen(
                 items(employees, key = { it.id }) { employee ->
                     EmployeeCard(
                         employee = employee,
-                        onDelete = { viewModel.deactivateEmployee(employee.id) }
+                        onDeactivate = { viewModel.deactivateEmployee(employee.id) }
                     )
                 }
             }
@@ -1431,7 +1423,7 @@ fun EmployeeListScreen(
 }
 
 @Composable
-fun EmployeeCard(employee: Employee, onDelete: () -> Unit) {
+fun EmployeeCard(employee: Employee, onDeactivate: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -1464,8 +1456,8 @@ fun EmployeeCard(employee: Employee, onDelete: () -> Unit) {
                     )
                 }
             }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Deactivate", tint = MaterialTheme.colorScheme.error)
+            IconButton(onClick = onDeactivate) {
+                Icon(Icons.Default.Block, contentDescription = "Deactivate", tint = MaterialTheme.colorScheme.error)
             }
         }
     }
