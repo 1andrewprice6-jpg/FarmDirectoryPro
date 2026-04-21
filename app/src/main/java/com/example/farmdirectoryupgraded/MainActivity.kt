@@ -90,6 +90,9 @@ import com.example.farmdirectoryupgraded.data.FarmDatabase
 import com.example.farmdirectoryupgraded.data.FarmWebSocketService
 import com.example.farmdirectoryupgraded.ui.AddFarmerScreen
 import com.example.farmdirectoryupgraded.ui.AttendanceScreen
+import com.example.farmdirectoryupgraded.ui.EmployeeListScreen
+import com.example.farmdirectoryupgraded.ui.FuelLogScreen
+import com.example.farmdirectoryupgraded.ui.VehicleLogScreen
 import com.example.farmdirectoryupgraded.ui.EditFarmerScreen
 import com.example.farmdirectoryupgraded.ui.ImportDataScreen
 import com.example.farmdirectoryupgraded.ui.LogsViewerScreen
@@ -100,8 +103,10 @@ import com.example.farmdirectoryupgraded.ui.theme.FarmDirectoryTheme
 import com.example.farmdirectoryupgraded.viewmodel.AttendanceViewModel
 import com.example.farmdirectoryupgraded.viewmodel.FarmViewModelFactory
 import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
+import com.example.farmdirectoryupgraded.viewmodel.FuelLogViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LogViewModel
+import com.example.farmdirectoryupgraded.viewmodel.VehicleLogViewModel
 import com.example.farmdirectoryupgraded.viewmodel.WebSocketViewModel
 
 class MainActivity : ComponentActivity() {
@@ -133,7 +138,9 @@ fun FarmDirectoryApp() {
             attendanceDao = database.attendanceDao(),
             employeeDao = database.employeeDao(),
             logDao = database.logDao(),
-            webSocketService = FarmWebSocketService.getInstance()
+            webSocketService = FarmWebSocketService.getInstance(),
+            fuelLogDao = database.fuelLogDao(),
+            vehicleLogDao = database.vehicleLogDao()
         )
     }
 
@@ -143,6 +150,8 @@ fun FarmDirectoryApp() {
     val locationViewModel: LocationViewModel = viewModel(factory = viewModelFactory)
     val webSocketViewModel: WebSocketViewModel = viewModel(factory = viewModelFactory)
     val logViewModel: LogViewModel = viewModel(factory = viewModelFactory)
+    val fuelLogViewModel: FuelLogViewModel = viewModel(factory = viewModelFactory)
+    val vehicleLogViewModel: VehicleLogViewModel = viewModel(factory = viewModelFactory)
 
     var currentScreen by remember { mutableStateOf("list") }
     var selectedFarmer by remember { mutableStateOf<Farmer?>(null) }
@@ -291,7 +300,10 @@ fun FarmDirectoryApp() {
             onReconcileClick = { currentScreen = "reconcile" },
             onAttendanceClick = { currentScreen = "attendance" },
             onRouteClick = { currentScreen = "route" },
-            onLogsClick = { currentScreen = "logs" }
+            onLogsClick = { currentScreen = "logs" },
+            onFuelLogsClick = { currentScreen = "fuel_logs" },
+            onVehicleLogsClick = { currentScreen = "vehicle_logs" },
+            onEmployeesClick = { currentScreen = "employees" }
         )
         "details" -> selectedFarmer?.let { farmer ->
             FarmerDetailsScreen(
@@ -338,6 +350,18 @@ fun FarmDirectoryApp() {
             viewModel = attendanceViewModel,
             onBack = { currentScreen = "list" }
         )
+        "fuel_logs" -> FuelLogScreen(
+            viewModel = fuelLogViewModel,
+            onBack = { currentScreen = "list" }
+        )
+        "vehicle_logs" -> VehicleLogScreen(
+            viewModel = vehicleLogViewModel,
+            onBack = { currentScreen = "list" }
+        )
+        "employees" -> EmployeeListScreen(
+            viewModel = attendanceViewModel,
+            onBack = { currentScreen = "list" }
+        )
         "route" -> RouteOptimizationScreen(
             locationViewModel = locationViewModel,
             farmerListViewModel = farmerListViewModel,
@@ -362,7 +386,10 @@ fun FarmerListScreen(
     onReconcileClick: () -> Unit = {},
     onAttendanceClick: () -> Unit = {},
     onRouteClick: () -> Unit = {},
-    onLogsClick: () -> Unit = {}
+    onLogsClick: () -> Unit = {},
+    onFuelLogsClick: () -> Unit = {},
+    onVehicleLogsClick: () -> Unit = {},
+    onEmployeesClick: () -> Unit = {}
 ) {
     val farmers by farmerListViewModel.farmers.collectAsState(initial = emptyList())
     val searchQuery by farmerListViewModel.searchQuery.collectAsState()
@@ -480,27 +507,27 @@ fun FarmerListScreen(
                 )
                 NavigationBarItem(
                     selected = false,
-                    onClick = onReconcileClick,
-                    icon = { Icon(Icons.Default.LocationOn, contentDescription = "Reconcile") },
-                    label = { Text("Reconcile") }
-                )
-                NavigationBarItem(
-                    selected = false,
                     onClick = onAttendanceClick,
                     icon = { Icon(Icons.Default.CheckCircle, contentDescription = "Attendance") },
                     label = { Text("Attendance") }
                 )
                 NavigationBarItem(
                     selected = false,
-                    onClick = onRouteClick,
-                    icon = { Icon(Icons.Default.Route, contentDescription = "Routes") },
-                    label = { Text("Routes") }
+                    onClick = onFuelLogsClick,
+                    icon = { Icon(Icons.Default.LocalGasStation, contentDescription = "Fuel") },
+                    label = { Text("Fuel") }
                 )
                 NavigationBarItem(
                     selected = false,
-                    onClick = onLogsClick,
-                    icon = { Icon(Icons.Default.Article, contentDescription = "Logs") },
-                    label = { Text("Logs") }
+                    onClick = onVehicleLogsClick,
+                    icon = { Icon(Icons.Default.DirectionsCar, contentDescription = "Vehicles") },
+                    label = { Text("Vehicles") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onEmployeesClick,
+                    icon = { Icon(Icons.Default.Group, contentDescription = "Employees") },
+                    label = { Text("Employees") }
                 )
             }
         },
