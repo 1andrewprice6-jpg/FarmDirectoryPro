@@ -416,6 +416,6 @@ class FarmerListViewModel(
     }
 
     fun startVoiceInput() {
-        // Placeholder
+        _errorMessage.value = "Voice input is not available on this device"
     }
 }

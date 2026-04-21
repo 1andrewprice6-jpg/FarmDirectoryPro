@@ -12,10 +12,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.farmdirectoryupgraded.data.Employee
 import com.example.farmdirectoryupgraded.data.Farmer
+import com.example.farmdirectoryupgraded.data.FuelLog
+import com.example.farmdirectoryupgraded.data.VehicleLog
 import com.example.farmdirectoryupgraded.viewmodel.AttendanceViewModel
+import com.example.farmdirectoryupgraded.viewmodel.FuelLogViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
+import com.example.farmdirectoryupgraded.viewmodel.VehicleLogViewModel
 
 // ========================================================================
 // ATTENDANCE TRACKING SCREEN
@@ -45,28 +50,13 @@ fun AttendanceScreen(
     viewModel: AttendanceViewModel,
     onBack: () -> Unit
 ) {
-    // AttendanceViewModel has _attendanceRecords: StateFlow<List<com.example.farmdirectoryupgraded.data.AttendanceRecord>>
-    // But the UI expects com.example.farmdirectoryupgraded.ui.AttendanceRecord (which is defined above).
-    // The ViewModel seems to be returning the DATA layer objects?
-    // Let's check AttendanceViewModel.kt... 
-    // It returns `List<AttendanceRecord>`. And imports `com.example.farmdirectoryupgraded.data.AttendanceRecord`.
-    // The UI `AttendanceRecord` is different (has formatted timestamp strings).
-    // I need to map it here OR update ViewModel to return UI models.
-    // The OLD FarmerViewModel mapped it. 
-    // Let's look at AttendanceViewModel again.
-    // It returns `val attendanceRecords = _attendanceRecords.asStateFlow()`. 
-    // And `_attendanceRecords` holds `List<com.example.farmdirectoryupgraded.data.AttendanceRecord>`.
-    
-    // I will map it here in the UI for now to save time on ViewModel refactoring, 
-    // or better, I should have updated ViewModel to return UI friendly data. 
-    // Given I can't easily change ViewModel without re-reading/writing, I'll map here.
-    
     val rawRecords by viewModel.attendanceRecords.collectAsState()
+    val employees by viewModel.employees.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+    val successMessage by viewModel.successMessage.collectAsState()
 
-    // Create SimpleDateFormat once; recreate only if locale changes (rare)
     val dateFormatter = remember { java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault()) }
 
-    // Re-map only when rawRecords changes
     val attendanceRecords = remember(rawRecords) {
         rawRecords.map { record ->
             AttendanceRecord(
@@ -83,17 +73,25 @@ fun AttendanceScreen(
     var selectedMethod by rememberSaveable { mutableStateOf(AttendanceMethod.GPS) }
     var farmName by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
-    
-    // AttendanceViewModel uses selectEmployee(employee). 
-    // But this screen doesn't show employee selection? 
-    // The old FarmerViewModel handled "selectedEmployee". 
-    // We might need to ensure an employee is selected before coming here or select one here.
-    // For now, I'll assume one is selected or the VM handles it. 
-    // Wait, the `recordAttendance` in `AttendanceViewModel` CHECKS for `_selectedEmployee`.
-    // If null, it errors. 
-    // The UI needs to allow selecting an employee if none is selected?
-    // Or `MainActivity` ensures one is selected?
-    // Let's proceed with the existing logic.
+
+    var selectedEmployee by remember { mutableStateOf<Employee?>(null) }
+    var employeeDropdownExpanded by remember { mutableStateOf(false) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(successMessage) {
+        if (successMessage != null) {
+            snackbarHostState.showSnackbar(successMessage!!)
+            viewModel.clearSuccess()
+        }
+    }
+
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            snackbarHostState.showSnackbar(errorMessage!!)
+            viewModel.clearError()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -109,7 +107,8 @@ fun AttendanceScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
@@ -137,10 +136,52 @@ fun AttendanceScreen(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
 
+                        // Employee dropdown
+                        ExposedDropdownMenuBox(
+                            expanded = employeeDropdownExpanded,
+                            onExpandedChange = { employeeDropdownExpanded = it }
+                        ) {
+                            OutlinedTextField(
+                                value = selectedEmployee?.name ?: "Select Employee",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Employee") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = employeeDropdownExpanded)
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = employeeDropdownExpanded,
+                                onDismissRequest = { employeeDropdownExpanded = false }
+                            ) {
+                                employees.forEach { emp ->
+                                    DropdownMenuItem(
+                                        text = { Text("${emp.name} (${emp.role})") },
+                                        onClick = {
+                                            selectedEmployee = emp
+                                            viewModel.selectEmployee(emp)
+                                            employeeDropdownExpanded = false
+                                        }
+                                    )
+                                }
+                                if (employees.isEmpty()) {
+                                    DropdownMenuItem(
+                                        text = { Text("No employees found") },
+                                        onClick = { employeeDropdownExpanded = false }
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
                         OutlinedTextField(
                             value = farmName,
                             onValueChange = { farmName = it },
-                            label = { Text("Farm Name") },
+                            label = { Text("Farm Name / Work Location") },
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -176,25 +217,38 @@ fun AttendanceScreen(
 
                         Button(
                             onClick = {
-                                if (farmName.isNotBlank()) {
-                                    val emp = viewModel.selectedEmployee.value
-                                    if (emp != null) {
-                                        // Guard: require real coordinates; block check-in if none are available
-                                        val loc = viewModel.lastKnownLocation ?: return@Button
-                                        viewModel.checkInWithGPS(
+                                val emp = selectedEmployee
+                                if (emp != null && farmName.isNotBlank()) {
+                                    if (selectedMethod == AttendanceMethod.GPS) {
+                                        val loc = viewModel.lastKnownLocation
+                                        if (loc != null) {
+                                            viewModel.checkInWithGPS(
+                                                employeeId = emp.id,
+                                                latitude = loc.first,
+                                                longitude = loc.second,
+                                                workLocation = farmName,
+                                                notes = notes
+                                            )
+                                        } else {
+                                            viewModel.checkInManual(
+                                                employeeId = emp.id,
+                                                workLocation = farmName,
+                                                notes = notes
+                                            )
+                                        }
+                                    } else {
+                                        viewModel.checkInManual(
                                             employeeId = emp.id,
-                                            latitude = loc.first,
-                                            longitude = loc.second,
                                             workLocation = farmName,
                                             notes = notes
                                         )
-                                        farmName = ""
-                                        notes = ""
                                     }
+                                    farmName = ""
+                                    notes = ""
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = farmName.isNotBlank()
+                            enabled = farmName.isNotBlank() && selectedEmployee != null
                         ) {
                             Icon(Icons.Default.CheckCircle, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
@@ -213,14 +267,19 @@ fun AttendanceScreen(
             }
 
             items(attendanceRecords, key = { it.id }) { record ->
-                AttendanceRecordCard(record)
+                AttendanceRecordCard(
+                    record = record,
+                    onCheckOut = { recordId ->
+                        viewModel.checkOut(recordId, 0.0, 0.0)
+                    }
+                )
             }
         }
     }
 }
 
 @Composable
-fun AttendanceRecordCard(record: AttendanceRecord) {
+fun AttendanceRecordCard(record: AttendanceRecord, onCheckOut: ((Int) -> Unit)? = null) {
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -254,6 +313,23 @@ fun AttendanceRecordCard(record: AttendanceRecord) {
                     text = record.notes,
                     style = MaterialTheme.typography.bodySmall
                 )
+            }
+            if (record.checkOut != null) {
+                Text(
+                    text = "Checked out: ${record.checkOut}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else if (onCheckOut != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = { onCheckOut(record.id) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Check Out")
+                }
             }
         }
     }
@@ -722,4 +798,763 @@ fun RouteOptimizationScreen(
             }
         }
     }
+}
+
+
+
+// ========================================================================
+// FUEL LOG SCREEN
+// ========================================================================
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FuelLogScreen(
+    viewModel: FuelLogViewModel,
+    onBack: () -> Unit
+) {
+    val fuelLogs by viewModel.fuelLogs.collectAsState()
+    val successMessage by viewModel.successMessage.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+
+    var showAddDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(successMessage) {
+        if (successMessage != null) {
+            snackbarHostState.showSnackbar(successMessage!!)
+            viewModel.clearSuccess()
+        }
+    }
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            snackbarHostState.showSnackbar(errorMessage!!)
+            viewModel.clearError()
+        }
+    }
+
+    if (showAddDialog) {
+        AddFuelLogDialog(
+            onDismiss = { showAddDialog = false },
+            onSave = { log ->
+                viewModel.addFuelLog(log)
+                showAddDialog = false
+            }
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Fuel Logs") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showAddDialog = true }) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Fuel Log")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        if (fuelLogs.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.LocalGasStation,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "No fuel logs yet",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = { showAddDialog = true }) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add Fuel Log")
+                    }
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(fuelLogs, key = { it.id }) { log ->
+                    FuelLogCard(
+                        log = log,
+                        onDelete = { viewModel.deleteFuelLog(log) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FuelLogCard(log: FuelLog, onDelete: () -> Unit) {
+    val dateFormatter = remember { java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault()) }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = log.vehicleName.ifBlank { log.vehicleId },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${log.fuelType} • ${log.quantity} gal • ${"$"}${String.format("%.2f", log.totalCost)}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    text = dateFormatter.format(java.util.Date(log.timestamp)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (log.station.isNotBlank()) {
+                    Text(
+                        text = log.station,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddFuelLogDialog(
+    onDismiss: () -> Unit,
+    onSave: (FuelLog) -> Unit
+) {
+    var vehicleId by remember { mutableStateOf("") }
+    var vehicleName by remember { mutableStateOf("") }
+    var fuelType by remember { mutableStateOf("DIESEL") }
+    var quantity by remember { mutableStateOf("") }
+    var unitPrice by remember { mutableStateOf("") }
+    var station by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
+
+    val fuelTypes = listOf("GASOLINE", "DIESEL", "E85", "CNG", "OTHER")
+    var fuelTypeExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Fuel Log") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = vehicleId,
+                    onValueChange = { vehicleId = it },
+                    label = { Text("Vehicle ID *") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = vehicleName,
+                    onValueChange = { vehicleName = it },
+                    label = { Text("Vehicle Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                ExposedDropdownMenuBox(
+                    expanded = fuelTypeExpanded,
+                    onExpandedChange = { fuelTypeExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = fuelType,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Fuel Type") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = fuelTypeExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = fuelTypeExpanded,
+                        onDismissRequest = { fuelTypeExpanded = false }
+                    ) {
+                        fuelTypes.forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type) },
+                                onClick = { fuelType = type; fuelTypeExpanded = false }
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = quantity,
+                    onValueChange = { quantity = it },
+                    label = { Text("Quantity (gallons)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = unitPrice,
+                    onValueChange = { unitPrice = it },
+                    label = { Text("Price per gallon") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = station,
+                    onValueChange = { station = it },
+                    label = { Text("Station") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Notes") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val qty = quantity.toDoubleOrNull() ?: 0.0
+                    val price = unitPrice.toDoubleOrNull() ?: 0.0
+                    onSave(
+                        FuelLog(
+                            vehicleId = vehicleId,
+                            vehicleName = vehicleName,
+                            fuelType = fuelType,
+                            quantity = qty,
+                            unitPrice = price,
+                            totalCost = qty * price,
+                            station = station,
+                            notes = notes,
+                            timestamp = System.currentTimeMillis()
+                        )
+                    )
+                },
+                enabled = vehicleId.isNotBlank() && quantity.isNotBlank()
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+// ========================================================================
+// VEHICLE LOG SCREEN
+// ========================================================================
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun VehicleLogScreen(
+    viewModel: VehicleLogViewModel,
+    onBack: () -> Unit
+) {
+    val vehicleLogs by viewModel.vehicleLogs.collectAsState()
+    val successMessage by viewModel.successMessage.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+
+    var showAddDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(successMessage) {
+        if (successMessage != null) {
+            snackbarHostState.showSnackbar(successMessage!!)
+            viewModel.clearSuccess()
+        }
+    }
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            snackbarHostState.showSnackbar(errorMessage!!)
+            viewModel.clearError()
+        }
+    }
+
+    if (showAddDialog) {
+        AddVehicleLogDialog(
+            onDismiss = { showAddDialog = false },
+            onSave = { log ->
+                viewModel.addVehicleLog(log)
+                showAddDialog = false
+            }
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Vehicle Logs") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showAddDialog = true }) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Vehicle Log")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        if (vehicleLogs.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.DirectionsCar,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "No vehicle logs yet",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = { showAddDialog = true }) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add Vehicle Log")
+                    }
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(vehicleLogs, key = { it.id }) { log ->
+                    VehicleLogCard(
+                        log = log,
+                        onDelete = { viewModel.deleteVehicleLog(log) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun VehicleLogCard(log: VehicleLog, onDelete: () -> Unit) {
+    val dateFormatter = remember { java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault()) }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = log.vehicleName.ifBlank { log.vehicleId },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${log.logType}${if (log.startLocation.isNotBlank()) " • ${log.startLocation}" else ""}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    text = dateFormatter.format(java.util.Date(log.timestamp)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (log.notes.isNotBlank()) {
+                    Text(
+                        text = log.notes,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddVehicleLogDialog(
+    onDismiss: () -> Unit,
+    onSave: (VehicleLog) -> Unit
+) {
+    var vehicleId by remember { mutableStateOf("") }
+    var vehicleName by remember { mutableStateOf("") }
+    var logType by remember { mutableStateOf("TRIP_START") }
+    var startLocation by remember { mutableStateOf("") }
+    var endLocation by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
+
+    val logTypes = listOf("TRIP_START", "TRIP_END", "MAINTENANCE", "INSPECTION", "REPAIR", "OTHER")
+    var logTypeExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Vehicle Log") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = vehicleId,
+                    onValueChange = { vehicleId = it },
+                    label = { Text("Vehicle ID *") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = vehicleName,
+                    onValueChange = { vehicleName = it },
+                    label = { Text("Vehicle Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                ExposedDropdownMenuBox(
+                    expanded = logTypeExpanded,
+                    onExpandedChange = { logTypeExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = logType,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Log Type") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = logTypeExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = logTypeExpanded,
+                        onDismissRequest = { logTypeExpanded = false }
+                    ) {
+                        logTypes.forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type) },
+                                onClick = { logType = type; logTypeExpanded = false }
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = startLocation,
+                    onValueChange = { startLocation = it },
+                    label = { Text("Start Location") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = endLocation,
+                    onValueChange = { endLocation = it },
+                    label = { Text("End Location") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Notes") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(
+                        VehicleLog(
+                            vehicleId = vehicleId,
+                            vehicleName = vehicleName,
+                            logType = logType,
+                            startLocation = startLocation,
+                            endLocation = endLocation,
+                            notes = notes,
+                            timestamp = System.currentTimeMillis()
+                        )
+                    )
+                },
+                enabled = vehicleId.isNotBlank()
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+// ========================================================================
+// EMPLOYEE LIST SCREEN
+// ========================================================================
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EmployeeListScreen(
+    viewModel: AttendanceViewModel,
+    onBack: () -> Unit
+) {
+    val employees by viewModel.employees.collectAsState()
+    val successMessage by viewModel.successMessage.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+
+    var showAddDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(successMessage) {
+        if (successMessage != null) {
+            snackbarHostState.showSnackbar(successMessage!!)
+            viewModel.clearSuccess()
+        }
+    }
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            snackbarHostState.showSnackbar(errorMessage!!)
+            viewModel.clearError()
+        }
+    }
+
+    if (showAddDialog) {
+        AddEmployeeDialog(
+            onDismiss = { showAddDialog = false },
+            onSave = { employee ->
+                viewModel.addEmployee(employee)
+                showAddDialog = false
+            }
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Employees") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showAddDialog = true }) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Employee")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        if (employees.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.Group,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "No employees yet",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = { showAddDialog = true }) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add Employee")
+                    }
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(employees, key = { it.id }) { employee ->
+                    EmployeeCard(
+                        employee = employee,
+                        onDelete = { viewModel.deactivateEmployee(employee.id) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EmployeeCard(employee: Employee, onDelete: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = employee.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = employee.role,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                if (employee.phone.isNotBlank()) {
+                    Text(
+                        text = employee.phone,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (!employee.isActive) {
+                    Text(
+                        text = "Inactive",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = "Deactivate", tint = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddEmployeeDialog(
+    onDismiss: () -> Unit,
+    onSave: (Employee) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var role by remember { mutableStateOf("CATCHER") }
+    var phone by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+
+    val roles = listOf("CATCHER", "DRIVER", "SUPERVISOR", "ADMIN", "OTHER")
+    var roleExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Employee") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name *") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                ExposedDropdownMenuBox(
+                    expanded = roleExpanded,
+                    onExpandedChange = { roleExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = role,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Role") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = roleExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = roleExpanded,
+                        onDismissRequest = { roleExpanded = false }
+                    ) {
+                        roles.forEach { r ->
+                            DropdownMenuItem(
+                                text = { Text(r) },
+                                onClick = { role = r; roleExpanded = false }
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it },
+                    label = { Text("Phone") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(
+                        Employee(
+                            name = name,
+                            role = role,
+                            phone = phone,
+                            email = email
+                        )
+                    )
+                },
+                enabled = name.isNotBlank()
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
