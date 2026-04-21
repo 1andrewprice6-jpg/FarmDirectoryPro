@@ -8,6 +8,9 @@ import com.example.farmdirectoryupgraded.data.VehicleLogDao
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 class VehicleLogViewModel(private val vehicleLogDao: VehicleLogDao) : ViewModel() {
@@ -25,9 +28,10 @@ class VehicleLogViewModel(private val vehicleLogDao: VehicleLogDao) : ViewModel(
     init { loadVehicleLogs() }
 
     private fun loadVehicleLogs() {
-        viewModelScope.launch {
-            vehicleLogDao.getAllVehicleLogs().collect { logs -> _vehicleLogs.value = logs }
-        }
+        vehicleLogDao.getAllVehicleLogs()
+            .onEach { logs -> _vehicleLogs.value = logs }
+            .catch { e -> _errorMessage.value = "Failed to load vehicle logs: ${e.message}" }
+            .launchIn(viewModelScope)
     }
 
     fun addVehicleLog(log: VehicleLog) {
