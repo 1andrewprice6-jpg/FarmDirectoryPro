@@ -90,6 +90,47 @@ class AttendanceViewModel(
     }
 
     /**
+     * Record a manual check-in (no GPS required)
+     *
+     * @param employeeId Employee ID
+     * @param workLocation Work location description
+     * @param taskDescription Task description
+     * @param notes Additional notes
+     */
+    fun checkInManual(
+        employeeId: Int,
+        workLocation: String = "",
+        taskDescription: String = "",
+        notes: String = ""
+    ) {
+        _isCheckingIn.value = true
+        viewModelScope.launch {
+            try {
+                val employee = employeeDao.getEmployeeById(employeeId) ?: throw Exception("Employee not found")
+                val record = AttendanceRecord(
+                    employeeId = employeeId,
+                    employeeName = employee.name,
+                    employeeRole = employee.role,
+                    method = "MANUAL",
+                    checkInTime = System.currentTimeMillis(),
+                    workLocation = workLocation,
+                    taskDescription = taskDescription,
+                    notes = notes
+                )
+                attendanceDao.insertAttendanceRecord(record)
+                _successMessage.value = "Manual check-in recorded successfully"
+                Log.d(TAG, "Employee $employeeId checked in manually")
+            } catch (e: Exception) {
+                val errorMsg = "Failed to record manual check-in: ${e.message}"
+                _errorMessage.value = errorMsg
+                Log.e(TAG, errorMsg, e)
+            } finally {
+                _isCheckingIn.value = false
+            }
+        }
+    }
+
+    /**
      * Record check-in with GPS method
      *
      * @param employeeId Employee ID
