@@ -11,6 +11,9 @@ import com.example.farmdirectoryupgraded.utils.QRCodeScanner
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import java.util.Date
 
@@ -61,6 +64,47 @@ class AttendanceViewModel(
 
     init {
         loadEmployees()
+        loadAllAttendanceRecords()
+    }
+
+    private fun loadAllAttendanceRecords() {
+        attendanceDao.getAllAttendanceRecords()
+            .onEach { records -> _attendanceRecords.value = records }
+            .catch { e -> _errorMessage.value = "Failed to load attendance records: ${e.message}" }
+            .launchIn(viewModelScope)
+    }
+
+    fun checkInManual(
+        employeeId: Int,
+        workLocation: String,
+        notes: String
+    ) {
+        _isCheckingIn.value = true
+        viewModelScope.launch {
+            try {
+                val employee = employeeDao.getEmployeeById(employeeId) ?: throw Exception("Employee not found")
+                val record = AttendanceRecord(
+                    employeeId = employeeId,
+                    employeeName = employee.name,
+                    employeeRole = employee.role,
+                    method = "MANUAL",
+                    checkInTime = System.currentTimeMillis(),
+                    checkInLatitude = null,
+                    checkInLongitude = null,
+                    workLocation = workLocation,
+                    notes = notes
+                )
+                attendanceDao.insertAttendanceRecord(record)
+                _successMessage.value = "Check-in recorded successfully"
+                Log.d(TAG, "Employee $employeeId checked in manually at $workLocation")
+            } catch (e: Exception) {
+                val errorMsg = "Failed to record check-in: ${e.message}"
+                _errorMessage.value = errorMsg
+                Log.e(TAG, errorMsg, e)
+            } finally {
+                _isCheckingIn.value = false
+            }
+        }
     }
 
     /**
