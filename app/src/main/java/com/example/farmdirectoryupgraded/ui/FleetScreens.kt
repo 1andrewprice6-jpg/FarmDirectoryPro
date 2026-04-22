@@ -22,6 +22,10 @@ import com.example.farmdirectoryupgraded.viewmodel.VehicleLogViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+private val EMPLOYEE_ROLES = listOf("CATCHER", "DRIVER", "SUPERVISOR", "ADMIN", "OTHER")
+private val FUEL_TYPES = listOf("GASOLINE", "DIESEL", "E85", "CNG", "ELECTRIC", "OTHER")
+private val VEHICLE_LOG_TYPES = listOf("TRIP_START", "TRIP_END", "MAINTENANCE", "INSPECTION", "REPAIR", "FUEL", "OTHER")
+
 // ========================================================================
 // EMPLOYEES SCREEN
 // ========================================================================
@@ -152,7 +156,7 @@ private fun AddEmployeeDialog(
     onDismiss: () -> Unit,
     onAdd: (Employee) -> Unit
 ) {
-    val roles = listOf("CATCHER", "DRIVER", "SUPERVISOR", "ADMIN", "OTHER")
+    val roles = EMPLOYEE_ROLES
     var name by remember { mutableStateOf("") }
     var role by remember { mutableStateOf("CATCHER") }
     var phone by remember { mutableStateOf("") }
@@ -426,7 +430,7 @@ private fun AddFuelLogDialog(
     onDismiss: () -> Unit,
     onAdd: (FuelLog) -> Unit
 ) {
-    val fuelTypes = listOf("GASOLINE", "DIESEL", "E85", "CNG", "ELECTRIC", "OTHER")
+    val fuelTypes = FUEL_TYPES
     var vehicleName by remember { mutableStateOf("") }
     var vehicleId by remember { mutableStateOf("") }
     var fuelType by remember { mutableStateOf("GASOLINE") }
@@ -740,7 +744,7 @@ private fun AddVehicleLogDialog(
     onDismiss: () -> Unit,
     onAdd: (VehicleLog) -> Unit
 ) {
-    val logTypes = listOf("TRIP_START", "TRIP_END", "MAINTENANCE", "INSPECTION", "REPAIR", "FUEL", "OTHER")
+    val logTypes = VEHICLE_LOG_TYPES
     var vehicleName by remember { mutableStateOf("") }
     var vehicleId by remember { mutableStateOf("") }
     var logType by remember { mutableStateOf("TRIP_START") }

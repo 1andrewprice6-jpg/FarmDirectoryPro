@@ -288,17 +288,38 @@ fun AttendanceScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                         }
 
+                        val gpsAvailable = viewModel.lastKnownLocation != null
+                        if (!gpsAvailable) {
+                            Text(
+                                text = "GPS unavailable — check-in will be recorded without coordinates.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+
                         Button(
                             onClick = {
                                 val emp = selectedEmployee ?: return@Button
-                                // Use last known GPS location or fall back to a placeholder
-                                val loc = viewModel.lastKnownLocation ?: Pair(0.0, 0.0)
+                                val loc = viewModel.lastKnownLocation
+                                // Record check-in; coordinates are null-safe — the DB stores
+                                // them as nullable and (null) is preferable to a fake (0, 0).
+                                // Until GPS is integrated, use 0.0 only as an explicit placeholder
+                                // that is already documented as "no GPS" in the notes field.
+                                val (lat, lon) = loc ?: (0.0 to 0.0)
+                                val checkInNotes = if (loc == null && notes.isBlank()) {
+                                    "Manual check-in (GPS unavailable)"
+                                } else if (loc == null) {
+                                    "$notes [GPS unavailable]"
+                                } else {
+                                    notes
+                                }
                                 viewModel.checkInWithGPS(
                                     employeeId = emp.id,
-                                    latitude = loc.first,
-                                    longitude = loc.second,
+                                    latitude = lat,
+                                    longitude = lon,
                                     workLocation = farmName,
-                                    notes = notes
+                                    notes = checkInNotes
                                 )
                                 farmName = ""
                                 notes = ""
