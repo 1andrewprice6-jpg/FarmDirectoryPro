@@ -7,7 +7,9 @@ import com.example.farmdirectoryupgraded.data.AttendanceDao
 import com.example.farmdirectoryupgraded.data.EmployeeDao
 import com.example.farmdirectoryupgraded.data.FarmWebSocketService
 import com.example.farmdirectoryupgraded.data.FarmerDao
+import com.example.farmdirectoryupgraded.data.FuelLogDao
 import com.example.farmdirectoryupgraded.data.LogDao
+import com.example.farmdirectoryupgraded.data.VehicleLogDao
 
 /**
  * Factory for creating ViewModels with their required dependencies
@@ -18,6 +20,8 @@ class FarmViewModelFactory(
     private val attendanceDao: AttendanceDao,
     private val employeeDao: EmployeeDao,
     private val logDao: LogDao,
+    private val vehicleLogDao: VehicleLogDao,
+    private val fuelLogDao: FuelLogDao,
     private val webSocketService: FarmWebSocketService
 ) : ViewModelProvider.Factory {
 
@@ -42,6 +46,14 @@ class FarmViewModelFactory(
             modelClass.isAssignableFrom(LogViewModel::class.java) -> {
                 @Suppress("UNCHECKED_CAST")
                 LogViewModel(context, logDao) as T
+            }
+            modelClass.isAssignableFrom(FuelLogViewModel::class.java) -> {
+                @Suppress("UNCHECKED_CAST")
+                FuelLogViewModel(fuelLogDao) as T
+            }
+            modelClass.isAssignableFrom(VehicleLogViewModel::class.java) -> {
+                @Suppress("UNCHECKED_CAST")
+                VehicleLogViewModel(vehicleLogDao) as T
             }
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }

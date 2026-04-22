@@ -29,15 +29,19 @@ import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Refresh
@@ -53,6 +57,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -91,17 +97,22 @@ import com.example.farmdirectoryupgraded.data.FarmWebSocketService
 import com.example.farmdirectoryupgraded.ui.AddFarmerScreen
 import com.example.farmdirectoryupgraded.ui.AttendanceScreen
 import com.example.farmdirectoryupgraded.ui.EditFarmerScreen
+import com.example.farmdirectoryupgraded.ui.EmployeesScreen
+import com.example.farmdirectoryupgraded.ui.FuelLogsScreen
 import com.example.farmdirectoryupgraded.ui.ImportDataScreen
 import com.example.farmdirectoryupgraded.ui.LogsViewerScreen
 import com.example.farmdirectoryupgraded.ui.ReconcileScreen
 import com.example.farmdirectoryupgraded.ui.RouteOptimizationScreen
 import com.example.farmdirectoryupgraded.ui.SettingsScreen
+import com.example.farmdirectoryupgraded.ui.VehicleLogsScreen
 import com.example.farmdirectoryupgraded.ui.theme.FarmDirectoryTheme
 import com.example.farmdirectoryupgraded.viewmodel.AttendanceViewModel
 import com.example.farmdirectoryupgraded.viewmodel.FarmViewModelFactory
 import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
+import com.example.farmdirectoryupgraded.viewmodel.FuelLogViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LogViewModel
+import com.example.farmdirectoryupgraded.viewmodel.VehicleLogViewModel
 import com.example.farmdirectoryupgraded.viewmodel.WebSocketViewModel
 
 class MainActivity : ComponentActivity() {
@@ -133,6 +144,8 @@ fun FarmDirectoryApp() {
             attendanceDao = database.attendanceDao(),
             employeeDao = database.employeeDao(),
             logDao = database.logDao(),
+            vehicleLogDao = database.vehicleLogDao(),
+            fuelLogDao = database.fuelLogDao(),
             webSocketService = FarmWebSocketService.getInstance()
         )
     }
@@ -143,6 +156,8 @@ fun FarmDirectoryApp() {
     val locationViewModel: LocationViewModel = viewModel(factory = viewModelFactory)
     val webSocketViewModel: WebSocketViewModel = viewModel(factory = viewModelFactory)
     val logViewModel: LogViewModel = viewModel(factory = viewModelFactory)
+    val fuelLogViewModel: FuelLogViewModel = viewModel(factory = viewModelFactory)
+    val vehicleLogViewModel: VehicleLogViewModel = viewModel(factory = viewModelFactory)
 
     var currentScreen by remember { mutableStateOf("list") }
     var selectedFarmer by remember { mutableStateOf<Farmer?>(null) }
@@ -291,7 +306,10 @@ fun FarmDirectoryApp() {
             onReconcileClick = { currentScreen = "reconcile" },
             onAttendanceClick = { currentScreen = "attendance" },
             onRouteClick = { currentScreen = "route" },
-            onLogsClick = { currentScreen = "logs" }
+            onLogsClick = { currentScreen = "logs" },
+            onEmployeesClick = { currentScreen = "employees" },
+            onFuelLogsClick = { currentScreen = "fuel_logs" },
+            onVehicleLogsClick = { currentScreen = "vehicle_logs" }
         )
         "details" -> selectedFarmer?.let { farmer ->
             FarmerDetailsScreen(
@@ -336,7 +354,8 @@ fun FarmDirectoryApp() {
         )
         "attendance" -> AttendanceScreen(
             viewModel = attendanceViewModel,
-            onBack = { currentScreen = "list" }
+            onBack = { currentScreen = "list" },
+            onManageEmployeesClick = { currentScreen = "employees" }
         )
         "route" -> RouteOptimizationScreen(
             locationViewModel = locationViewModel,
@@ -345,6 +364,18 @@ fun FarmDirectoryApp() {
         )
         "logs" -> LogsViewerScreen(
             viewModel = logViewModel,
+            onBack = { currentScreen = "list" }
+        )
+        "employees" -> EmployeesScreen(
+            viewModel = attendanceViewModel,
+            onBack = { currentScreen = "list" }
+        )
+        "fuel_logs" -> FuelLogsScreen(
+            viewModel = fuelLogViewModel,
+            onBack = { currentScreen = "list" }
+        )
+        "vehicle_logs" -> VehicleLogsScreen(
+            viewModel = vehicleLogViewModel,
             onBack = { currentScreen = "list" }
         )
     }
@@ -362,7 +393,10 @@ fun FarmerListScreen(
     onReconcileClick: () -> Unit = {},
     onAttendanceClick: () -> Unit = {},
     onRouteClick: () -> Unit = {},
-    onLogsClick: () -> Unit = {}
+    onLogsClick: () -> Unit = {},
+    onEmployeesClick: () -> Unit = {},
+    onFuelLogsClick: () -> Unit = {},
+    onVehicleLogsClick: () -> Unit = {}
 ) {
     val farmers by farmerListViewModel.farmers.collectAsState(initial = emptyList())
     val searchQuery by farmerListViewModel.searchQuery.collectAsState()
@@ -451,9 +485,36 @@ fun FarmerListScreen(
                     }
                 },
                 actions = {
-                    // Import button
-                    IconButton(onClick = onImportClick) {
-                        Icon(Icons.Default.Upload, contentDescription = "Import Data")
+                    var showMenu by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Import Data") },
+                                leadingIcon = { Icon(Icons.Default.Upload, contentDescription = null) },
+                                onClick = { showMenu = false; onImportClick() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Employees") },
+                                leadingIcon = { Icon(Icons.Default.Group, contentDescription = null) },
+                                onClick = { showMenu = false; onEmployeesClick() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Fuel Logs") },
+                                leadingIcon = { Icon(Icons.Default.LocalGasStation, contentDescription = null) },
+                                onClick = { showMenu = false; onFuelLogsClick() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Vehicle Logs") },
+                                leadingIcon = { Icon(Icons.Default.DirectionsCar, contentDescription = null) },
+                                onClick = { showMenu = false; onVehicleLogsClick() }
+                            )
+                        }
                     }
                     // Settings button
                     IconButton(onClick = onSettingsClick) {

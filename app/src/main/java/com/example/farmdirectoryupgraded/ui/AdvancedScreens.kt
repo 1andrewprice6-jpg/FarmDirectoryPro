@@ -43,35 +43,23 @@ data class AttendanceRecord(
 @Composable
 fun AttendanceScreen(
     viewModel: AttendanceViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onManageEmployeesClick: () -> Unit = {}
 ) {
-    // AttendanceViewModel has _attendanceRecords: StateFlow<List<com.example.farmdirectoryupgraded.data.AttendanceRecord>>
-    // But the UI expects com.example.farmdirectoryupgraded.ui.AttendanceRecord (which is defined above).
-    // The ViewModel seems to be returning the DATA layer objects?
-    // Let's check AttendanceViewModel.kt... 
-    // It returns `List<AttendanceRecord>`. And imports `com.example.farmdirectoryupgraded.data.AttendanceRecord`.
-    // The UI `AttendanceRecord` is different (has formatted timestamp strings).
-    // I need to map it here OR update ViewModel to return UI models.
-    // The OLD FarmerViewModel mapped it. 
-    // Let's look at AttendanceViewModel again.
-    // It returns `val attendanceRecords = _attendanceRecords.asStateFlow()`. 
-    // And `_attendanceRecords` holds `List<com.example.farmdirectoryupgraded.data.AttendanceRecord>`.
-    
-    // I will map it here in the UI for now to save time on ViewModel refactoring, 
-    // or better, I should have updated ViewModel to return UI friendly data. 
-    // Given I can't easily change ViewModel without re-reading/writing, I'll map here.
-    
     val rawRecords by viewModel.attendanceRecords.collectAsState()
+    val allEmployees by viewModel.employees.collectAsState()
+    val employees = remember(allEmployees) { allEmployees.filter { it.isActive } }
+    val selectedEmployee by viewModel.selectedEmployee.collectAsState()
+    val successMessage by viewModel.successMessage.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
 
-    // Create SimpleDateFormat once; recreate only if locale changes (rare)
     val dateFormatter = remember { java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault()) }
 
-    // Re-map only when rawRecords changes
     val attendanceRecords = remember(rawRecords) {
         rawRecords.map { record ->
             AttendanceRecord(
                 id = record.id,
-                farmName = record.workLocation ?: "Unknown",
+                farmName = record.workLocation.ifBlank { "Unknown" },
                 method = record.method,
                 timestamp = dateFormatter.format(java.util.Date(record.checkInTime)),
                 notes = record.notes,
@@ -83,17 +71,13 @@ fun AttendanceScreen(
     var selectedMethod by rememberSaveable { mutableStateOf(AttendanceMethod.GPS) }
     var farmName by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
-    
-    // AttendanceViewModel uses selectEmployee(employee). 
-    // But this screen doesn't show employee selection? 
-    // The old FarmerViewModel handled "selectedEmployee". 
-    // We might need to ensure an employee is selected before coming here or select one here.
-    // For now, I'll assume one is selected or the VM handles it. 
-    // Wait, the `recordAttendance` in `AttendanceViewModel` CHECKS for `_selectedEmployee`.
-    // If null, it errors. 
-    // The UI needs to allow selecting an employee if none is selected?
-    // Or `MainActivity` ensures one is selected?
-    // Let's proceed with the existing logic.
+
+    LaunchedEffect(successMessage) {
+        if (successMessage != null) {
+            kotlinx.coroutines.delay(2000)
+            viewModel.clearSuccess()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -102,6 +86,11 @@ fun AttendanceScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onManageEmployeesClick) {
+                        Icon(Icons.Default.Group, contentDescription = "Manage Employees")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -118,6 +107,121 @@ fun AttendanceScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Success/error messages
+            if (successMessage != null) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(successMessage!!)
+                        }
+                    }
+                }
+            }
+            if (errorMessage != null) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Error, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(errorMessage!!, color = MaterialTheme.colorScheme.onErrorContainer)
+                            Spacer(modifier = Modifier.weight(1f))
+                            IconButton(onClick = { viewModel.clearError() }) {
+                                Icon(Icons.Default.Close, contentDescription = "Dismiss")
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Employee selection section
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Employee",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            TextButton(onClick = onManageEmployeesClick) {
+                                Icon(Icons.Default.Group, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Manage")
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (employees.isEmpty()) {
+                            Text(
+                                text = "No employees found. Tap 'Manage' to add employees first.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        } else {
+                            Text(
+                                text = "Select who is checking in:",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            employees.forEach { employee ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = selectedEmployee?.id == employee.id,
+                                        onClick = { viewModel.selectEmployee(employee) }
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = employee.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = if (selectedEmployee?.id == employee.id) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                        Text(
+                                            text = employee.role,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Check-in form
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -174,27 +278,33 @@ fun AttendanceScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
+                        val canCheckIn = farmName.isNotBlank() && selectedEmployee != null
+                        if (!canCheckIn && farmName.isNotBlank() && selectedEmployee == null) {
+                            Text(
+                                text = "Select an employee above before checking in.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+
                         Button(
                             onClick = {
-                                if (farmName.isNotBlank()) {
-                                    val emp = viewModel.selectedEmployee.value
-                                    if (emp != null) {
-                                        // Guard: require real coordinates; block check-in if none are available
-                                        val loc = viewModel.lastKnownLocation ?: return@Button
-                                        viewModel.checkInWithGPS(
-                                            employeeId = emp.id,
-                                            latitude = loc.first,
-                                            longitude = loc.second,
-                                            workLocation = farmName,
-                                            notes = notes
-                                        )
-                                        farmName = ""
-                                        notes = ""
-                                    }
-                                }
+                                val emp = selectedEmployee ?: return@Button
+                                // Use last known GPS location or fall back to a placeholder
+                                val loc = viewModel.lastKnownLocation ?: Pair(0.0, 0.0)
+                                viewModel.checkInWithGPS(
+                                    employeeId = emp.id,
+                                    latitude = loc.first,
+                                    longitude = loc.second,
+                                    workLocation = farmName,
+                                    notes = notes
+                                )
+                                farmName = ""
+                                notes = ""
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = farmName.isNotBlank()
+                            enabled = canCheckIn
                         ) {
                             Icon(Icons.Default.CheckCircle, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
