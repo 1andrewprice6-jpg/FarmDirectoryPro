@@ -71,10 +71,19 @@ fun FarmDirectoryApp() {
     val locationViewModel: LocationViewModel = viewModel(factory = viewModelFactory)
     val webSocketViewModel: WebSocketViewModel = viewModel(factory = viewModelFactory)
     val logViewModel: LogViewModel = viewModel(factory = viewModelFactory)
+    val routePlannerViewModel: RoutePlannerViewModel = viewModel(factory = viewModelFactory)
 
     var currentScreen by remember { mutableStateOf("list") }
     var selectedFarmer by remember { mutableStateOf<Farmer?>(null) }
     val appSettings = remember { AppSettings(context) }
+
+    // Origin from GPS logic
+    val gpsLocation by locationViewModel.currentLocation.collectAsState()
+    LaunchedEffect(gpsLocation) {
+        gpsLocation?.let { loc ->
+            routePlannerViewModel.setOrigin(com.example.farmdirectoryupgraded.viewmodel.LatLng(loc.latitude, loc.longitude))
+        }
+    }
 
     // WebSocket state (from WebSocketViewModel)
     val connectionState by webSocketViewModel.connectionState.collectAsState()
@@ -219,7 +228,19 @@ fun FarmDirectoryApp() {
             onReconcileClick = { currentScreen = "reconcile" },
             onAttendanceClick = { currentScreen = "attendance" },
             onRouteClick = { currentScreen = "route" },
-            onLogsClick = { currentScreen = "logs" }
+            onRoutePlannerClick = { currentScreen = "route_planner" },
+            onLogsClick = { currentScreen = "logs" },
+            onAddToRoute = { farm ->
+                if (farm.latitude != null && farm.longitude != null) {
+                    routePlannerViewModel.addStop(
+                        com.example.farmdirectoryupgraded.viewmodel.Stop(
+                            id = farm.id,
+                            label = farm.farmName.ifBlank { farm.name },
+                            location = com.example.farmdirectoryupgraded.viewmodel.LatLng(farm.latitude!!, farm.longitude!!)
+                        )
+                    )
+                }
+            }
         )
         "details" -> selectedFarmer?.let { farmer ->
             FarmerDetailsScreen(
@@ -271,6 +292,10 @@ fun FarmDirectoryApp() {
             farmerListViewModel = farmerListViewModel,
             onBack = { currentScreen = "list" }
         )
+        "route_planner" -> RoutePlannerScreen(
+            viewModel = routePlannerViewModel,
+            onBack = { currentScreen = "list" }
+        )
         "logs" -> LogsViewerScreen(
             viewModel = logViewModel,
             onBack = { currentScreen = "list" }
@@ -290,7 +315,9 @@ fun FarmerListScreen(
     onReconcileClick: () -> Unit = {},
     onAttendanceClick: () -> Unit = {},
     onRouteClick: () -> Unit = {},
-    onLogsClick: () -> Unit = {}
+    onRoutePlannerClick: () -> Unit = {},
+    onLogsClick: () -> Unit = {},
+    onAddToRoute: (Farmer) -> Unit = {}
 ) {
     val farmers by farmerListViewModel.farmers.collectAsState(initial = emptyList())
     val searchQuery by farmerListViewModel.searchQuery.collectAsState()
@@ -423,6 +450,12 @@ fun FarmerListScreen(
                     onClick = onRouteClick,
                     icon = { Icon(Icons.Default.Route, contentDescription = "Routes") },
                     label = { Text("Routes") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onRoutePlannerClick,
+                    icon = { Icon(Icons.Default.Map, contentDescription = "Planner") },
+                    label = { Text("Planner") }
                 )
                 NavigationBarItem(
                     selected = false,
@@ -604,7 +637,8 @@ fun FarmerListScreen(
                     items(farmers) { farmer ->
                         FarmerCard(
                             farmer = farmer,
-                            onClick = { onFarmerClick(farmer) }
+                            onClick = { onFarmerClick(farmer) },
+                            onAddToRoute = { onAddToRoute(farmer) }
                         )
                     }
                 }
@@ -616,7 +650,8 @@ fun FarmerListScreen(
 @Composable
 fun FarmerCard(
     farmer: Farmer,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onAddToRoute: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
@@ -648,15 +683,30 @@ fun FarmerCard(
                         )
                     }
                 }
-                Column(
-                    horizontalAlignment = Alignment.End
-                ) {
-                    if (farmer.type.isNotEmpty()) {
-                        AssistChip(
-                            onClick = { },
-                            label = { Text(farmer.type) }
-                        )
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (farmer.latitude != null && farmer.longitude != null) {
+                        IconButton(onClick = onAddToRoute) {
+                            Icon(
+                                Icons.Default.AddLocationAlt,
+                                contentDescription = "Add to Route",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
+
+                    Column(
+                        horizontalAlignment = Alignment.End
+                    ) {
+                        if (farmer.type.isNotEmpty()) {
+                            AssistChip(
+                                onClick = { },
+                                label = { Text(farmer.type) }
+                            )
+                        }
+                    }
+                }
+            }
                     // Health status indicator
                     if (farmer.healthStatus != "HEALTHY") {
                         Spacer(modifier = Modifier.height(4.dp))

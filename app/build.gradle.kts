@@ -239,3 +239,5 @@ android.lint {
     xmlOutput = file("${buildDir}/reports/lint/lint-results.xml")
     htmlOutput = file("${buildDir}/reports/lint/lint-results.html")
 }
+
+

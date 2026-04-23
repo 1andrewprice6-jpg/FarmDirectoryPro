@@ -43,6 +43,10 @@ class FarmViewModelFactory(
                 @Suppress("UNCHECKED_CAST")
                 LogViewModel(context, logDao) as T
             }
+            modelClass.isAssignableFrom(RoutePlannerViewModel::class.java) -> {
+                @Suppress("UNCHECKED_CAST")
+                RoutePlannerViewModel() as T
+            }
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
     }

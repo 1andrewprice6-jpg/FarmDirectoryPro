@@ -1,0 +1,11 @@
+import com.android.build.gradle.tasks.ProcessAndroidResources
+import com.android.build.gradle.internal.res.Aapt2Compile
+
+allprojects {
+    tasks.withType(ProcessAndroidResources).configureEach {
+        it.aapt2Executable.set(file("/data/data/com.termux/files/usr/bin/aapt2"))
+    }
+    tasks.withType(Aapt2Compile).configureEach {
+        it.aapt2Executable.set(file("/data/data/com.termux/files/usr/bin/aapt2"))
+    }
+}
