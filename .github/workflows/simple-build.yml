@@ -5,6 +5,9 @@ on:
     branches: [ "**" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build Debug APK
@@ -27,6 +30,12 @@ jobs:
 
     - name: Build Debug APK
       run: ./gradlew assembleProdDebug --stacktrace
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: farm-directory-apk
+        path: app/build/outputs/apk/prod/debug/*.apk
 
     - name: Create Release and Upload APK
       run: |
