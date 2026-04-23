@@ -707,22 +707,21 @@ fun FarmerCard(
                     }
                 }
             }
-                    // Health status indicator
-                    if (farmer.healthStatus != "HEALTHY") {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        AssistChip(
-                            onClick = { },
-                            label = { Text(farmer.healthStatus) },
-                            colors = AssistChipDefaults.assistChipColors(
-                                containerColor = when (farmer.healthStatus) {
-                                    "CRITICAL" -> MaterialTheme.colorScheme.errorContainer
-                                    "SICK" -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
-                                    else -> MaterialTheme.colorScheme.secondaryContainer
-                                }
-                            )
-                        )
-                    }
-                }
+
+            // Health status indicator
+            if (farmer.healthStatus != "HEALTHY") {
+                Spacer(modifier = Modifier.height(4.dp))
+                AssistChip(
+                    onClick = { },
+                    label = { Text(farmer.healthStatus) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = when (farmer.healthStatus) {
+                            "CRITICAL" -> MaterialTheme.colorScheme.errorContainer
+                            "SICK" -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
+                            else -> MaterialTheme.colorScheme.secondaryContainer
+                        }
+                    )
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
