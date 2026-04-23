@@ -29,6 +29,7 @@ import com.example.farmdirectoryupgraded.viewmodel.AttendanceViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import com.example.farmdirectoryupgraded.viewmodel.WebSocketViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LogViewModel
+import com.example.farmdirectoryupgraded.viewmodel.RoutePlannerViewModel
 import com.example.farmdirectoryupgraded.viewmodel.FarmViewModelFactory
 import com.example.farmdirectoryupgraded.data.FarmWebSocketService
 
