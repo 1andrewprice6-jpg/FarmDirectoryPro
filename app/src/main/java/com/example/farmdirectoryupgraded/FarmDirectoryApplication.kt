@@ -48,14 +48,14 @@ class FarmDirectoryApplication : Application() {
         )
 
         val farmGridMapper = FarmGridMapper(
-            lookup = object : FarmGridMapper.FarmLookup {
+            lookup = object : com.example.farmdirectoryupgraded.vision.ledger.FarmLookup {
                 override suspend fun all() = db.farmerDao().getAllFarmersSync().map {
-                    FarmGridMapper.FarmLookup.Farm(it.id.toString(), it.name, it.latitude, it.longitude)
+                    com.example.farmdirectoryupgraded.vision.ledger.FarmLookup.Farm(it.id.toString(), it.name, it.latitude ?: 0.0, it.longitude ?: 0.0)
                 }
                 override suspend fun byId(id: String) = id.toIntOrNull()?.let { 
                     db.farmerDao().getFarmerById(it) 
                 }?.let { 
-                    FarmGridMapper.FarmLookup.Farm(it.id.toString(), it.name, it.latitude, it.longitude) 
+                    com.example.farmdirectoryupgraded.vision.ledger.FarmLookup.Farm(it.id.toString(), it.name, it.latitude ?: 0.0, it.longitude ?: 0.0) 
                 }
             },
         )

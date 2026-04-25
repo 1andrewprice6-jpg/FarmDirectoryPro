@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.example.farmdirectoryupgraded.vision.history
 
 import android.graphics.BitmapFactory

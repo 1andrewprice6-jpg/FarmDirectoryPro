@@ -236,15 +236,10 @@ private fun CalibrationCanvas(
                 drawLine(Emerald, toView(center), toView(maxTip), strokeWidth = 4f)
             }
             // Tap markers
-            listOfNotNull(
-                center to Cyan,
-                radiusEdge to Cyan,
-                minTip to Amber,
-                maxTip to Emerald,
-            ).forEach { (p, color) ->
-                drawCircle(color = color, radius = 10f, center = toView(p))
-                drawCircle(color = Color.Black, radius = 4f, center = toView(p))
-            }
+            center?.let { drawCircle(Cyan, 10f, toView(it)); drawCircle(Color.Black, 4f, toView(it)) }
+            radiusEdge?.let { drawCircle(Cyan, 10f, toView(it)); drawCircle(Color.Black, 4f, toView(it)) }
+            minTip?.let { drawCircle(Amber, 10f, toView(it)); drawCircle(Color.Black, 4f, toView(it)) }
+            maxTip?.let { drawCircle(Emerald, 10f, toView(it)); drawCircle(Color.Black, 4f, toView(it)) }
         }
     }
 }

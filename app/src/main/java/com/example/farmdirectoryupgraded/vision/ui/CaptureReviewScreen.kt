@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.example.farmdirectoryupgraded.vision.ui
 
 import androidx.compose.foundation.Image
@@ -206,10 +207,4 @@ private fun DecisionBanner(decision: ValidationGate.Decision) {
     }
 }
 
-private data class Quint<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E) {
-    operator fun component1() = a
-    operator fun component2() = b
-    operator fun component3() = c
-    operator fun component4() = d
-    operator fun component5() = e
-}
+private data class Quint<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)

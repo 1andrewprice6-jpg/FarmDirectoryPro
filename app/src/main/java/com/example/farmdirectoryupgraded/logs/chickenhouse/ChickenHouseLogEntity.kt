@@ -33,8 +33,8 @@ class MetricsConverter {
     @TypeConverter
     fun toJson(m: Map<String, Double>): String = json.encodeToString(
         kotlinx.serialization.builtins.MapSerializer(
-            kotlinx.serialization.builtins.serializer<String>(),
-            kotlinx.serialization.builtins.serializer<Double>(),
+            kotlinx.serialization.serializer<String>(),
+            kotlinx.serialization.serializer<Double>(),
         ),
         m,
     )
@@ -42,8 +42,8 @@ class MetricsConverter {
     fun fromJson(s: String): Map<String, Double> = if (s.isBlank()) emptyMap() else
         json.decodeFromString(
             kotlinx.serialization.builtins.MapSerializer(
-                kotlinx.serialization.builtins.serializer<String>(),
-                kotlinx.serialization.builtins.serializer<Double>(),
+                kotlinx.serialization.serializer<String>(),
+                kotlinx.serialization.serializer<Double>(),
             ),
             s,
         )

@@ -386,8 +386,20 @@ fun FarmDirectoryApp() {
             }
         }
         "history" -> {
+            val historyViewModel: com.example.farmdirectoryupgraded.vision.history.CaptureHistoryViewModel = viewModel(
+                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                        @Suppress("UNCHECKED_CAST")
+                        return com.example.farmdirectoryupgraded.vision.history.CaptureHistoryViewModel(
+                            context.applicationContext as android.app.Application,
+                            com.example.farmdirectoryupgraded.data.FarmDatabase.getDatabase(context).captureDao()
+                        ) as T
+                    }
+                }
+            )
             com.example.farmdirectoryupgraded.vision.history.CaptureHistoryScreen(
-                onNavigateToLinkedLog = { table, linkedId ->
+                viewModel = historyViewModel,
+                onLinkTap = { table, linkedId ->
                     currentScreen = "logs"
                 }
             )
