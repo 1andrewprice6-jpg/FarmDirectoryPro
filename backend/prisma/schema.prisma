@@ -1,0 +1,62 @@
+// backend/prisma/schema.prisma
+// Append to existing schema, then:
+//   npx prisma migrate dev --name add_logs_and_gauges
+
+model FuelLog {
+  id              Int       @id @default(autoincrement())
+  capturedAt      DateTime
+  farmId          String?
+  totalCost       Float?
+  gallons         Float?
+  pricePerGallon  Float?
+  odometerMiles   Int?
+  sourceCaptureId Int?
+  notes           String?
+
+  @@index([capturedAt])
+  @@index([farmId])
+  @@index([sourceCaptureId])
+}
+
+model MileageEntry {
+  id              Int       @id @default(autoincrement())
+  capturedAt      DateTime
+  odometerMiles   Int
+  farmId          String?
+  sourceCaptureId Int?
+  notes           String?
+
+  @@index([capturedAt])
+  @@index([farmId])
+  @@index([sourceCaptureId])
+}
+
+model ChickenHouseLog {
+  id              Int       @id @default(autoincrement())
+  dateIso         String?
+  farmId          String?
+  metricsJson     String    @db.Text   // JSON: {"mortality":3,"feed_lb":1450,...}
+  sourceCaptureId Int?
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  @@index([dateIso])
+  @@index([farmId])
+  @@index([sourceCaptureId])
+}
+
+model GaugeCalibration {
+  gaugeId           String   @id
+  gaugeLabel        String
+  centerXNorm       Float
+  centerYNorm       Float
+  radiusNorm        Float
+  minAngleDeg       Float
+  minValue          Float
+  maxAngleDeg       Float
+  maxValue          Float
+  unit              String
+  counterclockwise  Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
