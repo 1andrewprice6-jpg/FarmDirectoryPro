@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Article
@@ -146,6 +148,7 @@ fun FarmDirectoryApp() {
 
     var currentScreen by remember { mutableStateOf("list") }
     var selectedFarmer by remember { mutableStateOf<Farmer?>(null) }
+    var captureReviewId by remember { mutableStateOf<Long?>(null) }
     val appSettings = remember { AppSettings(context) }
 
     // WebSocket state (from WebSocketViewModel)
@@ -291,7 +294,9 @@ fun FarmDirectoryApp() {
             onReconcileClick = { currentScreen = "reconcile" },
             onAttendanceClick = { currentScreen = "attendance" },
             onRouteClick = { currentScreen = "route" },
-            onLogsClick = { currentScreen = "logs" }
+            onLogsClick = { currentScreen = "logs" },
+            onCaptureClick = { currentScreen = "capture" },
+            onHistoryClick = { currentScreen = "history" }
         )
         "details" -> selectedFarmer?.let { farmer ->
             FarmerDetailsScreen(
@@ -347,6 +352,65 @@ fun FarmDirectoryApp() {
             viewModel = logViewModel,
             onBack = { currentScreen = "list" }
         )
+        "capture" -> {
+            val captureViewModel: com.example.farmdirectoryupgraded.vision.ui.CaptureViewModel = viewModel(
+                factory = com.example.farmdirectoryupgraded.CaptureViewModelFactory(context.applicationContext as android.app.Application)
+            )
+            com.example.farmdirectoryupgraded.vision.ui.CaptureScreen(
+                viewModel = captureViewModel,
+                onCaptureReady = { captureId -> 
+                    captureReviewId = captureId
+                    currentScreen = "capture_review"
+                }
+            )
+        }
+        "capture_review" -> {
+            captureReviewId?.let { id ->
+                val captureViewModel: com.example.farmdirectoryupgraded.vision.ui.CaptureViewModel = viewModel(
+                    factory = com.example.farmdirectoryupgraded.CaptureViewModelFactory(context.applicationContext as android.app.Application)
+                )
+                val result = captureViewModel.ui.collectAsState().value.lastResult
+                if (result != null && result.captureId == id) {
+                    com.example.farmdirectoryupgraded.vision.ui.CaptureReviewScreen(
+                        result = result,
+                        onCommit = { fields ->
+                            captureViewModel.commitReview(id, fields)
+                            com.example.farmdirectoryupgraded.vision.sync.CaptureSyncWorker.enqueueImmediate(context.applicationContext)
+                            currentScreen = "list"
+                        },
+                        onDiscard = { currentScreen = "list" }
+                    )
+                } else {
+                    currentScreen = "list"
+                }
+            }
+        }
+        "history" -> {
+            com.example.farmdirectoryupgraded.vision.history.CaptureHistoryScreen(
+                onNavigateToLinkedLog = { table, linkedId ->
+                    currentScreen = "logs"
+                }
+            )
+        }
+        "calibrate_gauge" -> {
+            val gaugeCalViewModel: com.example.farmdirectoryupgraded.vision.calibration.GaugeCalibrationViewModel = viewModel(
+                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                        @Suppress("UNCHECKED_CAST")
+                        return com.example.farmdirectoryupgraded.vision.calibration.GaugeCalibrationViewModel(
+                            context.applicationContext as android.app.Application,
+                            com.example.farmdirectoryupgraded.data.FarmDatabase.getDatabase(context).gaugeCalibrationDao()
+                        ) as T
+                    }
+                }
+            )
+            com.example.farmdirectoryupgraded.vision.calibration.GaugeCalibrationScreen(
+                viewModel = gaugeCalViewModel,
+                initialPhoto = null,
+                onDone = { currentScreen = "list" },
+                onCancel = { currentScreen = "list" }
+            )
+        }
     }
 }
 
@@ -362,7 +426,9 @@ fun FarmerListScreen(
     onReconcileClick: () -> Unit = {},
     onAttendanceClick: () -> Unit = {},
     onRouteClick: () -> Unit = {},
-    onLogsClick: () -> Unit = {}
+    onLogsClick: () -> Unit = {},
+    onCaptureClick: () -> Unit = {},
+    onHistoryClick: () -> Unit = {}
 ) {
     val farmers by farmerListViewModel.farmers.collectAsState(initial = emptyList())
     val searchQuery by farmerListViewModel.searchQuery.collectAsState()
@@ -501,6 +567,18 @@ fun FarmerListScreen(
                     onClick = onLogsClick,
                     icon = { Icon(Icons.Default.Article, contentDescription = "Logs") },
                     label = { Text("Logs") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onCaptureClick,
+                    icon = { Icon(Icons.Default.CameraAlt, contentDescription = "Capture") },
+                    label = { Text("Capture") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onHistoryClick,
+                    icon = { Icon(Icons.Default.History, contentDescription = "History") },
+                    label = { Text("History") }
                 )
             }
         },

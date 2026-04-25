@@ -3,6 +3,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("kotlin-kapt")
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.22"
     id("jacoco")
 }
 
@@ -161,6 +162,8 @@ dependencies {
 
     // ML Kit for barcode/QR code scanning
     implementation("com.google.mlkit:barcode-scanning:17.1.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
 
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.5.0")

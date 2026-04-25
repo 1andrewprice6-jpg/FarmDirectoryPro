@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,10 +17,19 @@ import kotlinx.coroutines.launch
         LogEntry::class,
         Employee::class,
         VehicleLog::class,
-        FuelLog::class
+        FuelLog::class,
+        com.example.farmdirectoryupgraded.vision.ledger.CaptureEntity::class,
+        com.example.farmdirectoryupgraded.vision.calibration.GaugeCalibrationEntity::class,
+        com.example.farmdirectoryupgraded.logs.fuel.FuelLogEntity::class,
+        com.example.farmdirectoryupgraded.logs.mileage.MileageEntity::class,
+        com.example.farmdirectoryupgraded.logs.chickenhouse.ChickenHouseLogEntity::class
     ],
-    version = 6, // Updated: added Employee, VehicleLog, FuelLog entities; redesigned AttendanceRecord for employees
+    version = 8,
     exportSchema = false
+)
+@TypeConverters(
+    com.example.farmdirectoryupgraded.vision.ledger.ParsedFieldsConverter::class,
+    com.example.farmdirectoryupgraded.logs.chickenhouse.MetricsConverter::class,
 )
 abstract class FarmDatabase : RoomDatabase() {
     abstract fun farmerDao(): FarmerDao
@@ -27,7 +37,15 @@ abstract class FarmDatabase : RoomDatabase() {
     abstract fun logDao(): LogDao
     abstract fun employeeDao(): EmployeeDao
     abstract fun vehicleLogDao(): VehicleLogDao
+    // Original FuelLogDao
     abstract fun fuelLogDao(): FuelLogDao
+
+    // New Vision/Logs DAOs
+    abstract fun captureDao(): com.example.farmdirectoryupgraded.vision.ledger.CaptureDao
+    abstract fun gaugeCalibrationDao(): com.example.farmdirectoryupgraded.vision.calibration.GaugeCalibrationDao
+    abstract fun newFuelLogDao(): com.example.farmdirectoryupgraded.logs.fuel.FuelLogDao
+    abstract fun mileageDao(): com.example.farmdirectoryupgraded.logs.mileage.MileageDao
+    abstract fun chickenHouseDao(): com.example.farmdirectoryupgraded.logs.chickenhouse.ChickenHouseLogDao
 
     companion object {
         @Volatile
