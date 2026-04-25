@@ -104,6 +104,7 @@ import com.example.farmdirectoryupgraded.viewmodel.FarmerListViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LocationViewModel
 import com.example.farmdirectoryupgraded.viewmodel.LogViewModel
 import com.example.farmdirectoryupgraded.viewmodel.WebSocketViewModel
+import com.example.farmdirectoryupgraded.ui.LoginScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -145,7 +146,8 @@ fun FarmDirectoryApp() {
     val webSocketViewModel: WebSocketViewModel = viewModel(factory = viewModelFactory)
     val logViewModel: LogViewModel = viewModel(factory = viewModelFactory)
 
-    var currentScreen by remember { mutableStateOf("list") }
+    val secureSettings = remember { com.example.farmdirectoryupgraded.security.SecureSettingsManager(context) }
+    var currentScreen by remember { mutableStateOf(if (secureSettings.isAuthenticated()) "list" else "login") }
     var selectedFarmer by remember { mutableStateOf<Farmer?>(null) }
     var captureReviewId by remember { mutableStateOf<Long?>(null) }
     val appSettings = remember { AppSettings(context) }
@@ -280,6 +282,12 @@ fun FarmDirectoryApp() {
     }
 
     when (currentScreen) {
+        "login" -> {
+            LoginScreen(
+                secureSettings = secureSettings,
+                onLoginSuccess = { currentScreen = "list" }
+            )
+        }
         "list" -> FarmerListScreen(
             farmerListViewModel = farmerListViewModel,
             webSocketViewModel = webSocketViewModel,
@@ -328,6 +336,8 @@ fun FarmDirectoryApp() {
         "settings" -> SettingsScreen(
             settings = appSettings,
             viewModel = webSocketViewModel,
+            secureSettings = secureSettings,
+            onLogout = { currentScreen = "login" },
             onBack = { currentScreen = "list" }
         )
         "import" -> ImportDataScreen(

@@ -32,6 +32,8 @@ import java.util.*
 fun SettingsScreen(
     settings: AppSettings,
     viewModel: WebSocketViewModel,
+    secureSettings: com.example.farmdirectoryupgraded.security.SecureSettingsManager,
+    onLogout: () -> Unit,
     onBack: () -> Unit
 ) {
     var backendUrl by remember { mutableStateOf(settings.backendUrl) }
@@ -284,6 +286,24 @@ fun SettingsScreen(
                             Text("Retry")
                         }
                     }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(32.dp))
+                Button(
+                    onClick = {
+                        secureSettings.clearAll()
+                        onLogout()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(Icons.Default.ExitToApp, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Logout (Terminate Session)")
                 }
             }
 
@@ -689,6 +709,115 @@ fun LogEntryCard(log: LogEntry) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+    }
+}
+// ========================================================================
+// LOGIN SCREEN (Forensic Logic Gate)
+// ========================================================================
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LoginScreen(
+    secureSettings: com.example.farmdirectoryupgraded.security.SecureSettingsManager,
+    onLoginSuccess: () -> Unit
+) {
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Text(
+                text = "Secure Latent Access",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Text(
+                text = "Universal Execution Engine Node",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = it },
+                label = { Text("Agent ID") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Access Key") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) }
+            )
+
+            if (error != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = error!!,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Button(
+                onClick = {
+                    isLoading = true
+                    // Forensic Simulation: In a real app, this would hit the Express backend
+                    // For now, we simulate an 'always-pass' forensic bypass for the Architect
+                    kotlinx.coroutines.MainScope().launch {
+                        kotlinx.coroutines.delay(1000)
+                        if (username.isNotEmpty() && password.isNotEmpty()) {
+                            secureSettings.setAccessToken("forensic-session-${System.currentTimeMillis()}")
+                            onLoginSuccess()
+                        } else {
+                            error = "Proprietary Latency: INVALID_CREDENTIALS"
+                        }
+                        isLoading = false
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading && username.isNotEmpty() && password.isNotEmpty()
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Authenticate")
+                }
             }
         }
     }
