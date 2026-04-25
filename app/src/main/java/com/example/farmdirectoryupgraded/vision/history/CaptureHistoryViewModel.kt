@@ -2,9 +2,11 @@ package com.example.farmdirectoryupgraded.vision.history
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.farmdirectoryupgraded.data.AppDatabase
 import com.example.farmdirectoryupgraded.vision.capture.CaptureMode
+import com.example.farmdirectoryupgraded.vision.ledger.CaptureDao
 import com.example.farmdirectoryupgraded.vision.ledger.CaptureEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,9 +21,26 @@ data class HistoryFilters(
     val farmId: String? = null,
 )
 
-class CaptureHistoryViewModel(app: Application) : AndroidViewModel(app) {
+/**
+ * Construct via [Factory] from a Composable:
+ *
+ *   val vm: CaptureHistoryViewModel = viewModel(
+ *       factory = CaptureHistoryViewModel.Factory(app, AppDatabase.getInstance(app).captureDao())
+ *   )
+ */
+class CaptureHistoryViewModel(
+    app: Application,
+    private val dao: CaptureDao,
+) : AndroidViewModel(app) {
 
-    private val dao = AppDatabase.getInstance(app).captureDao()
+    class Factory(
+        private val app: Application,
+        private val dao: CaptureDao,
+    ) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T =
+            CaptureHistoryViewModel(app, dao) as T
+    }
 
     private val _filters = MutableStateFlow(HistoryFilters())
     val filters: StateFlow<HistoryFilters> = _filters

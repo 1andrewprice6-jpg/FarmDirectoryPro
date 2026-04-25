@@ -1,62 +1,22 @@
 // backend/prisma/schema.prisma
-// Append to existing schema, then:
-//   npx prisma migrate dev --name add_logs_and_gauges
+// Add to existing schema; run:
+//   npx prisma migrate dev --name add_visual_ingest
 
-model FuelLog {
+model Capture {
   id              Int       @id @default(autoincrement())
   capturedAt      DateTime
+  mode            String    // DASHBOARD_ODOMETER | FUEL_PUMP | ANALOG_GAUGE | CHICKEN_HOUSE_LOG | GENERIC_LOG
+  status          String    // COMPLETE | INCOMPLETE | INCONSISTENT | REJECTED | EDITED
+  rawImagePath    String    // server-side path under CAPTURE_STORAGE_DIR
+  parsedFields    String    @db.Text  // JSON (ParsedFields)
+  linkedEntities  String    @db.Text  // JSON: { fuelLogId, mileageEntryId, chickenHouseLogId }
   farmId          String?
-  totalCost       Float?
-  gallons         Float?
-  pricePerGallon  Float?
-  odometerMiles   Int?
-  sourceCaptureId Int?
-  notes           String?
-
-  @@index([capturedAt])
-  @@index([farmId])
-  @@index([sourceCaptureId])
-}
-
-model MileageEntry {
-  id              Int       @id @default(autoincrement())
-  capturedAt      DateTime
-  odometerMiles   Int
-  farmId          String?
-  sourceCaptureId Int?
-  notes           String?
-
-  @@index([capturedAt])
-  @@index([farmId])
-  @@index([sourceCaptureId])
-}
-
-model ChickenHouseLog {
-  id              Int       @id @default(autoincrement())
-  dateIso         String?
-  farmId          String?
-  metricsJson     String    @db.Text   // JSON: {"mortality":3,"feed_lb":1450,...}
-  sourceCaptureId Int?
-  notes           String?
+  latitude        Float?
+  longitude       Float?
   createdAt       DateTime  @default(now())
 
-  @@index([dateIso])
+  @@index([capturedAt])
   @@index([farmId])
-  @@index([sourceCaptureId])
-}
-
-model GaugeCalibration {
-  gaugeId           String   @id
-  gaugeLabel        String
-  centerXNorm       Float
-  centerYNorm       Float
-  radiusNorm        Float
-  minAngleDeg       Float
-  minValue          Float
-  maxAngleDeg       Float
-  maxValue          Float
-  unit              String
-  counterclockwise  Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  @@index([status])
+  @@index([mode])
 }

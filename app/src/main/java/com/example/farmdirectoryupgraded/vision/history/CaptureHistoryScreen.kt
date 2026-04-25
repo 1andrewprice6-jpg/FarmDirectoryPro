@@ -48,7 +48,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.farmdirectoryupgraded.vision.capture.CaptureMode
 import com.example.farmdirectoryupgraded.vision.ledger.CaptureEntity
 import java.io.File
@@ -68,7 +67,7 @@ private val Bright   = Color(0xFFD7DCE5)
 
 @Composable
 fun CaptureHistoryScreen(
-    viewModel: CaptureHistoryViewModel = viewModel(),
+    viewModel: CaptureHistoryViewModel,
     onLinkTap: (table: String, id: Long) -> Unit = { _, _ -> },
 ) {
     val rows by viewModel.captures.collectAsState()

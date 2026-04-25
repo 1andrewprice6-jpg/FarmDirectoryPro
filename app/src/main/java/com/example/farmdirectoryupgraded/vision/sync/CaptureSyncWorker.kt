@@ -11,7 +11,6 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.example.farmdirectoryupgraded.data.AppDatabase
 import java.util.concurrent.TimeUnit
 
 /**
@@ -40,7 +39,8 @@ class CaptureSyncWorker(
             return Result.success()
         }
 
-        val dao = AppDatabase.getInstance(applicationContext).captureDao()
+        val dao = SyncConfig.captureDao
+            ?: return Result.success()  // not wired up yet — treat as no-op
         val pending = dao.getUnsynced()
         if (pending.isEmpty()) return Result.success()
 
@@ -120,11 +120,12 @@ class CaptureSyncWorker(
 }
 
 /**
- * Holder for backend URL + token. Set once at app boot from your config or DI.
+ * Holder for backend URL + token + DAO. Set once at app boot from your config or DI.
  * Kept as a simple object instead of DI-injected to keep the worker constructor
  * compatible with WorkManager's default factory.
  */
 object SyncConfig {
     @Volatile var baseUrl: String? = null
     @Volatile var authToken: String? = null
+    @Volatile var captureDao: com.example.farmdirectoryupgraded.vision.ledger.CaptureDao? = null
 }
