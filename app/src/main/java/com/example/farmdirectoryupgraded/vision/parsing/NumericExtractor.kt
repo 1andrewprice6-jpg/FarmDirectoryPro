@@ -71,11 +71,11 @@ object NumericExtractor {
     /** First ISO-like date. Accepts MM/DD/YY, MM-DD-YYYY, YYYY-MM-DD. */
     fun firstDateIso(text: String): String? {
         val ymd = Regex("""\b(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b""")
-        ymd.find(text)?.let { (_, y, m, d) ->
+        ymd.find(text)?.destructured?.let { (y, m, d) ->
             return "%04d-%02d-%02d".format(y.toInt(), m.toInt(), d.toInt())
         }
         val mdy = Regex("""\b(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})\b""")
-        mdy.find(text)?.let { (_, m, d, y) ->
+        mdy.find(text)?.destructured?.let { (m, d, y) ->
             val year = y.toInt().let { if (it < 100) 2000 + it else it }
             return "%04d-%02d-%02d".format(year, m.toInt(), d.toInt())
         }
