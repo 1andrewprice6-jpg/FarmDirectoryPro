@@ -10,7 +10,7 @@ import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
 @Entity(
-    tableName = "fuel_logs",
+    tableName = "vision_fuel_logs",
     indices = [Index("capturedAtEpochMs"), Index("farmId"), Index("sourceCaptureId")],
 )
 data class FuelLogEntity(
@@ -28,31 +28,31 @@ data class FuelLogEntity(
 
 @Dao
 interface FuelLogDao {
-    @Query("SELECT * FROM fuel_logs ORDER BY capturedAtEpochMs DESC")
+    @Query("SELECT * FROM vision_fuel_logs ORDER BY capturedAtEpochMs DESC")
     fun observeAll(): Flow<List<FuelLogEntity>>
 
-    @Query("SELECT * FROM fuel_logs WHERE farmId = :farmId ORDER BY capturedAtEpochMs DESC")
+    @Query("SELECT * FROM vision_fuel_logs WHERE farmId = :farmId ORDER BY capturedAtEpochMs DESC")
     fun observeByFarm(farmId: String): Flow<List<FuelLogEntity>>
 
-    @Query("SELECT * FROM fuel_logs WHERE id = :id")
+    @Query("SELECT * FROM vision_fuel_logs WHERE id = :id")
     suspend fun get(id: Long): FuelLogEntity?
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(entry: FuelLogEntity): Long
 
-    @Query("DELETE FROM fuel_logs WHERE id = :id")
+    @Query("DELETE FROM vision_fuel_logs WHERE id = :id")
     suspend fun delete(id: Long)
 
     @Query("""
         SELECT COALESCE(SUM(totalCost), 0)
-        FROM fuel_logs
+        FROM vision_fuel_logs
         WHERE capturedAtEpochMs >= :sinceEpochMs
     """)
     suspend fun totalCostSince(sinceEpochMs: Long): Double
 
     @Query("""
         SELECT COALESCE(SUM(gallons), 0)
-        FROM fuel_logs
+        FROM vision_fuel_logs
         WHERE capturedAtEpochMs >= :sinceEpochMs
     """)
     suspend fun totalGallonsSince(sinceEpochMs: Long): Double
