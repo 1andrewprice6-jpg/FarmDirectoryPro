@@ -1,4 +1,4 @@
-package com.farmdirectory.pro.vision.calibration
+package com.example.farmdirectoryupgraded.vision.calibration
 
 import androidx.room.Dao
 import androidx.room.Entity
@@ -6,7 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
-import com.farmdirectory.pro.vision.vision.GaugeCalibration
+import com.example.farmdirectoryupgraded.vision.vision.GaugeCalibration
 import kotlinx.coroutines.flow.Flow
 
 /**

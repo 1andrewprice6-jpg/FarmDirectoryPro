@@ -1,6 +1,6 @@
-package com.farmdirectory.pro.vision.sync
+package com.example.farmdirectoryupgraded.vision.sync
 
-import com.farmdirectory.pro.vision.ledger.CaptureEntity
+import com.example.farmdirectoryupgraded.vision.ledger.CaptureEntity
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient

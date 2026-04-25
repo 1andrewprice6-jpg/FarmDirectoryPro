@@ -1,4 +1,4 @@
-package com.farmdirectory.pro.logs.mileage
+package com.example.farmdirectoryupgraded.logs.mileage
 
 import androidx.room.Dao
 import androidx.room.Entity

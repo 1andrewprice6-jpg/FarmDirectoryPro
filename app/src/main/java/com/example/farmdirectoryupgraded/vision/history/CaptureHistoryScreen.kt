@@ -1,4 +1,4 @@
-package com.farmdirectory.pro.vision.history
+package com.example.farmdirectoryupgraded.vision.history
 
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
@@ -49,8 +49,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.farmdirectory.pro.vision.capture.CaptureMode
-import com.farmdirectory.pro.vision.ledger.CaptureEntity
+import com.example.farmdirectoryupgraded.vision.capture.CaptureMode
+import com.example.farmdirectoryupgraded.vision.ledger.CaptureEntity
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date

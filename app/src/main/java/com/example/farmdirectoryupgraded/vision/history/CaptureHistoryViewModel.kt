@@ -1,11 +1,11 @@
-package com.farmdirectory.pro.vision.history
+package com.example.farmdirectoryupgraded.vision.history
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.farmdirectory.pro.data.AppDatabase
-import com.farmdirectory.pro.vision.capture.CaptureMode
-import com.farmdirectory.pro.vision.ledger.CaptureEntity
+import com.example.farmdirectoryupgraded.data.AppDatabase
+import com.example.farmdirectoryupgraded.vision.capture.CaptureMode
+import com.example.farmdirectoryupgraded.vision.ledger.CaptureEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

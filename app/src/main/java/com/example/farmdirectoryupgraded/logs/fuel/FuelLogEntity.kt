@@ -1,4 +1,4 @@
-package com.farmdirectory.pro.logs.fuel
+package com.example.farmdirectoryupgraded.logs.fuel
 
 import androidx.room.Dao
 import androidx.room.Entity

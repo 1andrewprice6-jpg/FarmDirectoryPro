@@ -1,4 +1,4 @@
-package com.farmdirectory.pro.logs.chickenhouse
+package com.example.farmdirectoryupgraded.logs.chickenhouse
 
 import androidx.room.Dao
 import androidx.room.Entity

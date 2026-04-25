@@ -1,11 +1,11 @@
-package com.farmdirectory.pro.vision.calibration
+package com.example.farmdirectoryupgraded.vision.calibration
 
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.farmdirectory.pro.vision.vision.GaugeCalibration
+import com.example.farmdirectoryupgraded.vision.vision.GaugeCalibration
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update

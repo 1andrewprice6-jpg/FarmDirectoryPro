@@ -1,12 +1,12 @@
-package com.farmdirectory.pro.logs
+package com.example.farmdirectoryupgraded.logs
 
-import com.farmdirectory.pro.logs.chickenhouse.ChickenHouseLogDao
-import com.farmdirectory.pro.logs.chickenhouse.ChickenHouseLogEntity
-import com.farmdirectory.pro.logs.fuel.FuelLogDao
-import com.farmdirectory.pro.logs.fuel.FuelLogEntity
-import com.farmdirectory.pro.logs.mileage.MileageDao
-import com.farmdirectory.pro.logs.mileage.MileageEntryEntity
-import com.farmdirectory.pro.vision.ledger.LedgerPropagator
+import com.example.farmdirectoryupgraded.logs.chickenhouse.ChickenHouseLogDao
+import com.example.farmdirectoryupgraded.logs.chickenhouse.ChickenHouseLogEntity
+import com.example.farmdirectoryupgraded.logs.fuel.FuelLogDao
+import com.example.farmdirectoryupgraded.logs.fuel.FuelLogEntity
+import com.example.farmdirectoryupgraded.logs.mileage.MileageDao
+import com.example.farmdirectoryupgraded.logs.mileage.MileageEntryEntity
+import com.example.farmdirectoryupgraded.vision.ledger.LedgerPropagator
 
 /**
  * Default wiring of the LedgerPropagator.Targets interface against the three

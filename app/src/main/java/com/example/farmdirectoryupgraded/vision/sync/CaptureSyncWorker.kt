@@ -1,4 +1,4 @@
-package com.farmdirectory.pro.vision.sync
+package com.example.farmdirectoryupgraded.vision.sync
 
 import android.content.Context
 import androidx.work.BackoffPolicy
@@ -11,7 +11,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.farmdirectory.pro.data.AppDatabase
+import com.example.farmdirectoryupgraded.data.AppDatabase
 import java.util.concurrent.TimeUnit
 
 /**
