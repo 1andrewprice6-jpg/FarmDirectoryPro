@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
         com.example.farmdirectoryupgraded.vision.ledger.CaptureEntity::class,
         com.example.farmdirectoryupgraded.vision.calibration.GaugeCalibrationEntity::class,
         com.example.farmdirectoryupgraded.logs.fuel.FuelLogEntity::class,
-        com.example.farmdirectoryupgraded.logs.mileage.MileageEntity::class,
+        com.example.farmdirectoryupgraded.logs.mileage.MileageEntryEntity::class,
         com.example.farmdirectoryupgraded.logs.chickenhouse.ChickenHouseLogEntity::class
     ],
     version = 8,
