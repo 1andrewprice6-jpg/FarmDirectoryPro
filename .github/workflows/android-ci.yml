@@ -46,7 +46,7 @@ jobs:
 
     - name: Upload Lint Reports
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: lint-reports
         path: app/build/reports/lint/
@@ -86,7 +86,7 @@ jobs:
 
     - name: Upload Test Reports
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: test-reports
         path: app/build/reports/tests/
@@ -94,7 +94,7 @@ jobs:
 
     - name: Upload Coverage Reports
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: coverage-reports
         path: app/build/reports/jacoco/
@@ -149,7 +149,7 @@ jobs:
       run: ./gradlew assemble${{ matrix.variant }} --stacktrace
 
     - name: Upload ${{ matrix.variant }} APK
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: apk-${{ matrix.variant }}
         path: app/build/outputs/apk/**/*.apk
@@ -178,7 +178,7 @@ jobs:
         ./gradlew dependencies > build/dependencies.txt
 
     - name: Upload Dependency Report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: dependencies
         path: build/dependencies.txt
